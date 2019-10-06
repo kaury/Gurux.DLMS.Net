@@ -149,6 +149,7 @@ namespace GuruxDLMSServerExample
             //If pre-established connections are used.
             ClientSystemTitle = ASCIIEncoding.ASCII.GetBytes("ABCDEFGH");
             Ciphering.Security = Security.AuthenticationEncryption;
+            this.Conformance |= Conformance.GeneralBlockTransfer;
 
             Media.OnReceived += new Gurux.Common.ReceivedEventHandler(OnReceived);
             Media.OnClientConnected += new Gurux.Common.ClientConnectedEventHandler(OnClientConnected);
@@ -400,6 +401,7 @@ namespace GuruxDLMSServerExample
             Items.Add(new GXDLMSCharge());
             Items.Add(new GXDLMSTokenGateway());
             Items.Add(new GXDLMSCompactData());
+            Items.Add(new GXDLMSDisconnectControl());
 
             ///////////////////////////////////////////////////////////////////////
             //Server must initialize after all objects are added.
@@ -513,8 +515,8 @@ namespace GuruxDLMSServerExample
         /// <param name="count">Item count.</param>
         void GetProfileGenericDataByRangeFromRingBuffer(ValueEventArgs e)
         {
-            GXDateTime start = (GXDateTime)GXDLMSClient.ChangeType((byte[])((object[])e.Parameters)[1], DataType.DateTime);
-            GXDateTime end = (GXDateTime)GXDLMSClient.ChangeType((byte[])((object[])e.Parameters)[2], DataType.DateTime);
+            GXDateTime start = (GXDateTime)GXDLMSClient.ChangeType((byte[])((List<object>)e.Parameters)[1], DataType.DateTime);
+            GXDateTime end = (GXDateTime)GXDLMSClient.ChangeType((byte[])((List<object>)e.Parameters)[2], DataType.DateTime);
             uint pos = 0;
             DateTime last = DateTime.MinValue;
             lock (FileLock)
@@ -577,8 +579,8 @@ namespace GuruxDLMSServerExample
         /// <param name="count">Item count.</param>
         void GetProfileGenericDataByRange(ValueEventArgs e)
         {
-            GXDateTime start = (GXDateTime)GXDLMSClient.ChangeType((byte[])((object[])e.Parameters)[1], DataType.DateTime);
-            GXDateTime end = (GXDateTime)GXDLMSClient.ChangeType((byte[])((object[])e.Parameters)[2], DataType.DateTime);
+            GXDateTime start = (GXDateTime)GXDLMSClient.ChangeType((byte[])((List<object>)e.Parameters)[1], DataType.DateTime);
+            GXDateTime end = (GXDateTime)GXDLMSClient.ChangeType((byte[])((List<object>)e.Parameters)[2], DataType.DateTime);
             lock (FileLock)
             {
                 using (var fs = File.OpenRead(GetdataFile()))
@@ -697,11 +699,11 @@ namespace GuruxDLMSServerExample
                             else if (e.Selector == 2)
                             {
                                 //Read by range.
-                                e.RowBeginIndex = (UInt32)((object[])e.Parameters)[0];
-                                e.RowEndIndex = e.RowBeginIndex + (UInt32)((object[])e.Parameters)[1];
+                                e.RowBeginIndex = (UInt32)((List<object>)e.Parameters)[0] - 1;
+                                e.RowEndIndex = (UInt32)((List<object>)e.Parameters)[1];
                                 //If client wants to read more data what we have.
                                 UInt16 cnt = GetProfileGenericDataCount(p);
-                                if (e.RowEndIndex - e.RowBeginIndex > cnt - e.RowBeginIndex)
+                                if (e.RowEndIndex > cnt)
                                 {
                                     if (UseRingBuffer)
                                     {
@@ -739,6 +741,8 @@ namespace GuruxDLMSServerExample
                                 index += GetHead();
                             }
                             GetProfileGenericDataByEntry(p, index, count);
+                            e.RowEndIndex -= e.RowBeginIndex;
+                            e.RowBeginIndex = 0;
                         }
                     }
                     continue;
@@ -861,9 +865,9 @@ namespace GuruxDLMSServerExample
                     {
                         i.ImageTransferStatus = ImageTransferStatus.NotInitiated;
                         i.ImageActivateInfo = null;
-                        ImageUpdate = ASCIIEncoding.ASCII.GetString((byte[])(it.Parameters as object[])[0]);
+                        ImageUpdate = ASCIIEncoding.ASCII.GetString((byte[])(it.Parameters as List<object>)[0]);
                         string file = Path.Combine(Path.GetDirectoryName(typeof(GXDLMSBase).Assembly.Location), ImageUpdate + ".exe");
-                        System.Diagnostics.Debug.WriteLine("Updating image" + ImageUpdate + " Size:" + (it.Parameters as object[])[1]);
+                        System.Diagnostics.Debug.WriteLine("Updating image" + ImageUpdate + " Size:" + (it.Parameters as List<object>)[1]);
                         using (var writer = File.Create(file))
                         {
                         }
@@ -873,7 +877,7 @@ namespace GuruxDLMSServerExample
                     {
                         i.ImageTransferStatus = ImageTransferStatus.TransferInitiated;
                         string file = Path.Combine(Path.GetDirectoryName(typeof(GXDLMSBase).Assembly.Location), ImageUpdate + ".exe");
-                        object[] p = (object[])it.Parameters;
+                        List<object> p = (List<object>)it.Parameters;
                         try
                         {
                             using (FileStream fs = new FileStream(file, FileMode.Append))

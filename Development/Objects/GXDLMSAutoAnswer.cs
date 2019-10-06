@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -44,7 +44,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAutoAnswer
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAutoAnswer
     /// </summary>
     public class GXDLMSAutoAnswer : GXDLMSObject, IGXDLMSBase
     {
@@ -289,7 +289,7 @@ namespace Gurux.DLMS.Objects
                 ListeningWindow.Clear();
                 if (e.Value != null)
                 {
-                    foreach (Object[] item in (Object[])e.Value)
+                    foreach (List<object> item in (List<object>)e.Value)
                     {
                         GXDateTime start = (GXDateTime)GXDLMSClient.ChangeType((byte[])item[0], DataType.DateTime, settings.UseUtc2NormalTime);
                         GXDateTime end = (GXDateTime)GXDLMSClient.ChangeType((byte[])item[1], DataType.DateTime, settings.UseUtc2NormalTime);
@@ -310,8 +310,8 @@ namespace Gurux.DLMS.Objects
                 NumberOfRingsInListeningWindow = NumberOfRingsOutListeningWindow = 0;
                 if (e.Value != null)
                 {
-                    NumberOfRingsInListeningWindow = Convert.ToInt32(((Object[])e.Value)[0]);
-                    NumberOfRingsOutListeningWindow = Convert.ToInt32(((Object[])e.Value)[1]);
+                    NumberOfRingsInListeningWindow = Convert.ToInt32(((List<object>)e.Value)[0]);
+                    NumberOfRingsOutListeningWindow = Convert.ToInt32(((List<object>)e.Value)[1]);
                 }
             }
             else

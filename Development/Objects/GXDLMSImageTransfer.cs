@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -44,7 +44,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSImageTransfer
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSImageTransfer
     /// </summary>
     public class GXDLMSImageTransfer : GXDLMSObject, IGXDLMSBase
     {
@@ -154,6 +154,10 @@ namespace Gurux.DLMS.Objects
             {
                 throw new Exception("Invalid image block size");
             }
+            if (ImageBlockSize > client.MaxReceivePDUSize)
+            {
+                throw new Exception("Image block size is bigger than max PDU size.");
+            }
             GXByteBuffer data = new GXByteBuffer();
             data.SetUInt8((byte)DataType.Structure);
             data.SetUInt8((byte)2);
@@ -262,7 +266,7 @@ namespace Gurux.DLMS.Objects
             {
                 ImageFirstNotTransferredBlockNumber = 0;
                 ImageTransferredBlocksStatus = "";
-                object[] value = (object[])e.Parameters;
+                List<object> value = (List<object>)e.Parameters;
                 byte[] imageIdentifier = (byte[])value[0];
                 ImageSize = (UInt32)value[1];
                 ImageTransferStatus = ImageTransferStatus.TransferInitiated;
@@ -304,7 +308,7 @@ namespace Gurux.DLMS.Objects
             //Image block transfer
             else if (e.Index == 2)
             {
-                object[] value = (object[])e.Parameters;
+                List<object> value = (List<object>)e.Parameters;
                 uint imageIndex = (uint)value[0];
                 char[] tmp = ImageTransferredBlocksStatus.ToCharArray();
                 tmp[(int)imageIndex] = '1';
@@ -489,13 +493,12 @@ namespace Gurux.DLMS.Objects
             List<GXDLMSImageActivateInfo> list = new List<GXDLMSImageActivateInfo>();
             if (value != null)
             {
-                foreach (Object it in (Object[])value)
+                foreach (List<object> it in (List<object>)value)
                 {
                     GXDLMSImageActivateInfo item = new GXDLMSImageActivateInfo();
-                    Object[] tmp = (Object[])it;
-                    item.Size = Convert.ToUInt32(tmp[0]);
-                    item.Identification = (byte[])tmp[1];
-                    item.Signature = (byte[])tmp[2];
+                    item.Size = Convert.ToUInt32(it[0]);
+                    item.Identification = (byte[])it[1];
+                    item.Signature = (byte[])it[2];
                     list.Add(item);
                 }
             }

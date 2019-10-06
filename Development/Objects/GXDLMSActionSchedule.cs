@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -44,7 +44,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSActionSchedule
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSActionSchedule
     /// </summary>
     public class GXDLMSActionSchedule : GXDLMSObject, IGXDLMSBase
     {
@@ -248,7 +248,7 @@ namespace Gurux.DLMS.Objects
                         data.SetUInt8((byte)DataType.Structure);
                         //Count
                         data.SetUInt8((byte)2);
-                        if (settings.Standard == Standard.SaudiArabia)
+                        if (settings != null && settings.Standard == Standard.SaudiArabia)
                         {
                             //Time
                             GXCommon.SetData(settings, data, DataType.Time, new GXTime(it));
@@ -280,13 +280,13 @@ namespace Gurux.DLMS.Objects
             {
                 if (e.Value != null)
                 {
-                    String ln = GXCommon.ToLogicalName(((object[])e.Value)[0]);
+                    String ln = GXCommon.ToLogicalName(((List<object>)e.Value)[0]);
                     Target = (GXDLMSScriptTable)settings.Objects.FindByLN(ObjectType.ScriptTable, ln);
                     if (Target == null)
                     {
                         Target = new GXDLMSScriptTable(ln);
                     }
-                    ExecutedScriptSelector = Convert.ToUInt16(((object[])e.Value)[1]);
+                    ExecutedScriptSelector = Convert.ToUInt16(((List<object>)e.Value)[1]);
                 }
                 else
                 {
@@ -304,7 +304,7 @@ namespace Gurux.DLMS.Objects
                 if (e.Value != null)
                 {
                     List<GXDateTime> items = new List<GXDateTime>();
-                    foreach (object[] it in (object[])e.Value)
+                    foreach (List<object> it in (List<object>)e.Value)
                     {
                         GXDateTime time;
                         if (it[0] is byte[])

@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -71,45 +71,5 @@ namespace Gurux.DLMS.Objects.Italy
             get;
             set;
         }
-
-        /// <summary>
-        /// Weekly Activation.
-        /// </summary>
-        [XmlIgnore()]
-        public WeeklyActivation WeeklyActivation
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// Month of the year of the special day.
-        /// </summary>
-        [XmlIgnore()]
-        public byte SpecialDayMonth
-        {
-            get;
-            set;
-        }
-        /// <summary>
-        /// Day of the month of the special day.
-        /// </summary>
-        [XmlIgnore()]
-        public byte SpecialDay
-        {
-            get;
-            set;
-        }
-
-        /// <summary>
-        /// Day of the month of the special day.
-        /// </summary>
-        [XmlIgnore()]
-        public bool SpecialDayEnabled
-        {
-            get;
-            set;
-        }
     }
-
 }

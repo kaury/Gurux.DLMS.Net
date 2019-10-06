@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -45,7 +45,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSClock
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSClock
     /// </summary>
     public class GXDLMSClock : GXDLMSObject, IGXDLMSBase
     {
@@ -226,9 +226,9 @@ namespace Gurux.DLMS.Objects
             // avalidity_interval within which the new time can be activated.
             else if (e.Index == 5)
             {
-                GXDateTime presetTime = (GXDateTime)GXDLMSClient.ChangeType((byte[])((Object[])e.Parameters)[0], DataType.DateTime, settings.UseUtc2NormalTime);
-                GXDateTime validityIntervalStart = (GXDateTime)GXDLMSClient.ChangeType((byte[])((Object[])e.Parameters)[1], DataType.DateTime, settings.UseUtc2NormalTime);
-                GXDateTime validityIntervalEnd = (GXDateTime)GXDLMSClient.ChangeType((byte[])((Object[])e.Parameters)[2], DataType.DateTime, settings.UseUtc2NormalTime);
+                GXDateTime presetTime = (GXDateTime)GXDLMSClient.ChangeType((byte[])((List<object>)e.Parameters)[0], DataType.DateTime, settings.UseUtc2NormalTime);
+                GXDateTime validityIntervalStart = (GXDateTime)GXDLMSClient.ChangeType((byte[])((List<object>)e.Parameters)[1], DataType.DateTime, settings.UseUtc2NormalTime);
+                GXDateTime validityIntervalEnd = (GXDateTime)GXDLMSClient.ChangeType((byte[])((List<object>)e.Parameters)[2], DataType.DateTime, settings.UseUtc2NormalTime);
                 this.Time.Value = presetTime.Value;
             }
             // Shifts the time.

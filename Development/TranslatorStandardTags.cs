@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -115,6 +115,8 @@ namespace Gurux.DLMS
                                     "result-source-diagnostic");
             GXDLMSTranslator.AddTag(list, TranslatorGeneralTags.ACSEServiceUser,
                                     "acse-service-user");
+            GXDLMSTranslator.AddTag(list, TranslatorGeneralTags.ACSEServiceProvider,
+                                    "acse-service-provider");
             GXDLMSTranslator.AddTag(list, TranslatorGeneralTags.CallingAPTitle,
                                     "CallingAPTitle");
             GXDLMSTranslator.AddTag(list, TranslatorGeneralTags.RespondingAPTitle,
@@ -133,6 +135,7 @@ namespace Gurux.DLMS
             GXDLMSTranslator.AddTag(list, TranslatorGeneralTags.CalledAeInvocationId,
                                     "called-AE-invocation-id");
             GXDLMSTranslator.AddTag(list, TranslatorGeneralTags.RespondingAeInvocationId, "responding-AE-invocation-id");
+            GXDLMSTranslator.AddTag(list, TranslatorGeneralTags.CallingAeQualifier, "calling-Ae-qualifier");
         }
 
         /// <summary>

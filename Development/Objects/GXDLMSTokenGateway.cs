@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -46,7 +46,7 @@ namespace Gurux.DLMS.Objects
     /// </summary>
     ///  <remarks>
     ///  Online help:<br/>
-    ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
+    ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
     /// </remarks>
     public enum TokenStatusCode : byte
     {
@@ -93,7 +93,7 @@ namespace Gurux.DLMS.Objects
     /// </summary>
     /// <remarks>
     ///  Online help:<br/>
-    ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
+    ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
     /// </remarks>
     public enum TokenDelivery : byte
     {
@@ -113,7 +113,7 @@ namespace Gurux.DLMS.Objects
 
     /// <summary>
     /// Online help:<br/>
-    ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
+    ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
     /// </summary>
     public class GXDLMSTokenGateway : GXDLMSObject, IGXDLMSBase
     {
@@ -150,7 +150,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
         /// </remarks>
         [XmlIgnore()]
         public byte[] Token
@@ -164,7 +164,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
         /// </remarks>
         [XmlIgnore()]
         public GXDateTime Time
@@ -178,7 +178,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
         /// </remarks>
         [XmlIgnore()]
         public List<string> Descriptions
@@ -192,7 +192,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
         /// </remarks>
         [XmlIgnore()]
         public TokenDelivery DeliveryMethod
@@ -206,7 +206,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
         /// </remarks>
         [XmlIgnore()]
         public TokenStatusCode StatusCode
@@ -220,7 +220,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSTokenGateway
         /// </remarks>
         [XmlIgnore()]
         public string DataValue
@@ -379,7 +379,7 @@ namespace Gurux.DLMS.Objects
                     Descriptions.Clear();
                     if (e.Value != null)
                     {
-                        foreach (object it in (object[])e.Value)
+                        foreach (object it in (List<object>)e.Value)
                         {
                             Descriptions.Add(ASCIIEncoding.ASCII.GetString((byte[])it));
                         }
@@ -389,8 +389,8 @@ namespace Gurux.DLMS.Objects
                     DeliveryMethod = (TokenDelivery)Convert.ToByte(e.Value);
                     break;
                 case 6:
-                    StatusCode = (TokenStatusCode)Convert.ToByte(((object[])e.Value)[0]);
-                    DataValue = Convert.ToString(((object[])e.Value)[1]);
+                    StatusCode = (TokenStatusCode)Convert.ToByte(((List<object>)e.Value)[0]);
+                    DataValue = Convert.ToString(((List<object>)e.Value)[1]);
                     break;
                 default:
                     e.Error = ErrorCode.ReadWriteDenied;

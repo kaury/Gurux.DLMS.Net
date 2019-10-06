@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -225,7 +225,7 @@ namespace Gurux.DLMS.Objects
 
     /// <summary>
     ///  Online help:<br/>
-    ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+    ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
     /// </summary>
     public class GXDLMSAccount : GXDLMSObject, IGXDLMSBase
     {
@@ -268,7 +268,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public PaymentMode PaymentMode
@@ -282,7 +282,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public AccountStatus AccountStatus
@@ -296,7 +296,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public byte CurrentCreditInUse
@@ -311,7 +311,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public AccountCreditStatus CurrentCreditStatus
@@ -325,7 +325,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public int AvailableCredit
@@ -339,7 +339,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public int AmountToClear
@@ -353,7 +353,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public int ClearanceThreshold
@@ -367,7 +367,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public int AggregatedDebt
@@ -381,7 +381,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public List<string> CreditReferences
@@ -395,7 +395,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public List<string> ChargeReferences
@@ -409,7 +409,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public List<GXCreditChargeConfiguration> CreditChargeConfigurations
@@ -423,7 +423,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public List<GXTokenGatewayConfiguration> TokenGatewayConfigurations
@@ -437,7 +437,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public GXDateTime AccountActivationTime
@@ -451,7 +451,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public GXDateTime AccountClosureTime
@@ -465,7 +465,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public GXCurrency Currency
@@ -479,7 +479,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public int LowCreditThreshold
@@ -493,7 +493,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public int NextCreditAvailableThreshold
@@ -507,7 +507,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public UInt16 MaxProvision
@@ -521,7 +521,7 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <remarks>
         ///  Online help:<br/>
-        ///  http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
+        ///  https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAccount
         /// </remarks>
         [XmlIgnore()]
         public int MaxProvisionPeriod
@@ -875,8 +875,8 @@ LowCreditThreshold, NextCreditAvailableThreshold, MaxProvision, MaxProvisionPeri
                     LogicalName = GXCommon.ToLogicalName(e.Value);
                     break;
                 case 2:
-                    AccountStatus = (AccountStatus)Convert.ToByte(((object[])e.Value)[0]);
-                    PaymentMode = (PaymentMode)Convert.ToByte(((object[])e.Value)[1]);
+                    AccountStatus = (AccountStatus)Convert.ToByte(((List<object>)e.Value)[0]);
+                    PaymentMode = (PaymentMode)Convert.ToByte(((List<object>)e.Value)[1]);
                     break;
                 case 3:
                     CurrentCreditInUse = (byte)e.Value;
@@ -900,7 +900,7 @@ LowCreditThreshold, NextCreditAvailableThreshold, MaxProvision, MaxProvisionPeri
                     CreditReferences.Clear();
                     if (e.Value != null)
                     {
-                        foreach (object it in (object[])e.Value)
+                        foreach (object it in (List<object>)e.Value)
                         {
                             CreditReferences.Add(GXCommon.ToLogicalName(it));
                         }
@@ -910,7 +910,7 @@ LowCreditThreshold, NextCreditAvailableThreshold, MaxProvision, MaxProvisionPeri
                     ChargeReferences.Clear();
                     if (e.Value != null)
                     {
-                        foreach (object it in (object[])e.Value)
+                        foreach (object it in (List<object>)e.Value)
                         {
                             ChargeReferences.Add(GXCommon.ToLogicalName(it));
                         }
@@ -920,7 +920,7 @@ LowCreditThreshold, NextCreditAvailableThreshold, MaxProvision, MaxProvisionPeri
                     CreditChargeConfigurations.Clear();
                     if (e.Value != null)
                     {
-                        foreach (object[] it in (object[])e.Value)
+                        foreach (List<object> it in (List<object>)e.Value)
                         {
                             GXCreditChargeConfiguration item = new GXCreditChargeConfiguration();
                             item.CreditReference = GXCommon.ToLogicalName(it[0]);
@@ -934,7 +934,7 @@ LowCreditThreshold, NextCreditAvailableThreshold, MaxProvision, MaxProvisionPeri
                     TokenGatewayConfigurations.Clear();
                     if (e.Value != null)
                     {
-                        foreach (object[] it in (object[])e.Value)
+                        foreach (List<object> it in (List<object>)e.Value)
                         {
                             GXTokenGatewayConfiguration item = new GXTokenGatewayConfiguration();
                             item.CreditReference = GXCommon.ToLogicalName(it[0]);
@@ -986,7 +986,7 @@ LowCreditThreshold, NextCreditAvailableThreshold, MaxProvision, MaxProvisionPeri
                     }
                     break;
                 case 15:
-                    object[] tmp = (object[])e.Value;
+                    List<object> tmp = (List<object>)e.Value;
                     Currency.Name = (string)tmp[0];
                     Currency.Scale = (sbyte)tmp[1];
                     Currency.Unit = (Currency)Convert.ToByte(tmp[2]);

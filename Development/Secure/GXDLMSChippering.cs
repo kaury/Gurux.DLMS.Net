@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -34,6 +34,7 @@
 
 using System;
 using System.Linq;
+using Gurux.DLMS.Enums;
 using Gurux.DLMS.Internal;
 using Gurux.DLMS.Objects.Enums;
 
@@ -193,6 +194,10 @@ namespace Gurux.DLMS.Secure
                     {
                         p.SystemTitle = new byte[len];
                         data.Get(p.SystemTitle);
+                        if (p.Xml != null && p.Xml.Comments)
+                        {
+                            p.Xml.AppendComment(GXCommon.SystemTitleToString(Standard.DLMS, p.SystemTitle));
+                        }
                     }
                     break;
                 case Command.GeneralCiphering:
@@ -294,6 +299,19 @@ namespace Gurux.DLMS.Secure
             p.CipheredContent = data.Remaining();
             byte sc = (byte)data.GetUInt8();
             Enums.Security security = (Enums.Security)(sc & 0x30);
+            if ((sc & 0x80) != 0)
+            {
+                System.Diagnostics.Debug.WriteLine("Compression is used.");
+            }
+            if ((sc & 0x40) != 0)
+            {
+                System.Diagnostics.Debug.WriteLine("Error: Key_Set is used.");
+            }
+            if ((sc & 0x20) != 0)
+            {
+                System.Diagnostics.Debug.WriteLine("Encryption is applied.");
+            }
+
             SecuritySuite ss = (SecuritySuite)(sc & 0x3);
             p.Security = security;
             UInt32 invocationCounter = data.GetUInt32();

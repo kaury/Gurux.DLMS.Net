@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -44,7 +44,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSActivityCalendar
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSActivityCalendar
     /// </summary>
     public class GXDLMSActivityCalendar : GXDLMSObject, IGXDLMSBase
     {
@@ -472,7 +472,7 @@ namespace Gurux.DLMS.Objects
             if (value != null)
             {
                 List<GXDLMSSeasonProfile> items = new List<GXDLMSSeasonProfile>();
-                foreach (object[] item in (object[])value)
+                foreach (List<object> item in (List<object>)value)
                 {
                     GXDLMSSeasonProfile it = new GXDLMSSeasonProfile();
                     it.Name = (byte[])item[0];
@@ -501,7 +501,7 @@ namespace Gurux.DLMS.Objects
             if (value != null)
             {
                 List<GXDLMSWeekProfile> items = new List<GXDLMSWeekProfile>();
-                foreach (object[] item in (object[])value)
+                foreach (List<object> item in (List<object>)value)
                 {
                     GXDLMSWeekProfile it = new GXDLMSWeekProfile();
                     it.Name = (byte[])item[0];
@@ -524,12 +524,12 @@ namespace Gurux.DLMS.Objects
             if (value != null)
             {
                 List<GXDLMSDayProfile> items = new List<GXDLMSDayProfile>();
-                foreach (object[] item in (object[])value)
+                foreach (List<object> item in (List<object>)value)
                 {
                     GXDLMSDayProfile it = new GXDLMSDayProfile();
                     it.DayId = Convert.ToInt32(item[0]);
                     List<GXDLMSDayProfileAction> actions = new List<GXDLMSDayProfileAction>();
-                    foreach (object[] it2 in (object[])item[1])
+                    foreach (List<object> it2 in (List<object>)item[1])
                     {
                         GXDLMSDayProfileAction ac = new GXDLMSDayProfileAction();
                         if (it2[0] is GXTime)

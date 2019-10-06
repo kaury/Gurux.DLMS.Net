@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -46,7 +46,7 @@ namespace Gurux.DLMS.Objects
     /// <summary>
     /// Auto Connect implements data transfer from the device to one or several destinations.
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAutoConnect
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSAutoConnect
     /// </summary>
     public class GXDLMSAutoConnect : GXDLMSObject, IGXDLMSBase
     {
@@ -323,7 +323,7 @@ namespace Gurux.DLMS.Objects
                 CallingWindow.Clear();
                 if (e.Value != null)
                 {
-                    foreach (Object[] item in (Object[])e.Value)
+                    foreach (List<object> item in (List<object>)e.Value)
                     {
                         GXDateTime start = (GXDateTime)GXDLMSClient.ChangeType((byte[])item[0], DataType.DateTime, settings.UseUtc2NormalTime);
                         GXDateTime end = (GXDateTime)GXDLMSClient.ChangeType((byte[])item[1], DataType.DateTime, settings.UseUtc2NormalTime);
@@ -337,7 +337,7 @@ namespace Gurux.DLMS.Objects
                 if (e.Value != null)
                 {
                     List<string> items = new List<string>();
-                    foreach (object item in (object[])e.Value)
+                    foreach (object item in (List<object>)e.Value)
                     {
                         string it;
                         if (item is byte[])

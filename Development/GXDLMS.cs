@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -156,6 +156,7 @@ namespace Gurux.DLMS
                 availableObjectTypes.Add(ObjectType.ParameterMonitor, typeof(GXDLMSParameterMonitor));
                 availableObjectTypes.Add(ObjectType.CompactData, typeof(GXDLMSCompactData));
                 availableObjectTypes.Add(ObjectType.WirelessModeQchannel, typeof(GXDLMSWirelessModeQchannel));
+                availableObjectTypes.Add(ObjectType.UtilityTables, typeof(GXDLMSUtilityTables));
                 //Italian standard uses this.
                 availableObjectTypes.Add(ObjectType.TariffPlan, typeof(GXDLMSTariffPlan));
             }
@@ -236,14 +237,30 @@ namespace Gurux.DLMS
         ///</returns>
         internal static byte[] ReceiverReady(GXDLMSSettings settings, RequestTypes type)
         {
-            if (type == RequestTypes.None)
+            GXReplyData reply = new GXReplyData() { MoreData = type };
+            reply.WindowSize = settings.WindowSize;
+            reply.BlockNumberAck = settings.BlockNumberAck;
+            reply.BlockNumber = (UInt16)settings.BlockIndex;
+            return ReceiverReady(settings, reply);
+        }
+
+        ///<summary>
+        ///Generates an acknowledgment message, with which the server is informed to send next packets.
+        ///</summary>
+        ///<param name="reply">Reply data.</param>
+        ///<returns>
+        ///Acknowledgment message as byte array.
+        ///</returns>
+        internal static byte[] ReceiverReady(GXDLMSSettings settings, GXReplyData reply)
+        {
+            if (reply.MoreData == RequestTypes.None)
             {
                 //Generate RR.
                 byte id = settings.KeepAlive();
                 return GetHdlcFrame(settings, id, null);
             }
             // Get next frame.
-            if ((type & RequestTypes.Frame) != 0)
+            if ((reply.MoreData & RequestTypes.Frame) != 0)
             {
                 byte id = settings.ReceiverReady();
                 return GetHdlcFrame(settings, id, null);
@@ -272,23 +289,20 @@ namespace Gurux.DLMS
                 }
             }
             // Get next block.
-            GXByteBuffer bb = new GXByteBuffer(4);
-            byte[][] reply;
-            /*
-            if ((settings.NegotiatedConformance & Conformance.GeneralBlockTransfer) != 0)
+            byte[][] data;
+            if (reply.MoreData == RequestTypes.GBT)
             {
-                GXDLMSLNParameters p = new GXDLMSLNParameters(settings, 0, Command.GeneralBlockTransfer, 0, bb, null, 0xff);
-                p.WindowSize = settings.WindowSize;
-                p.blockNumberAck = settings.BlockNumberAck;
-                p.blockIndex = (UInt16)settings.BlockIndex;
+                GXDLMSLNParameters p = new GXDLMSLNParameters(null, settings, 0, Command.GeneralBlockTransfer, 0, null, null, 0xff, Command.None);
+                p.WindowSize = reply.WindowSize;
+                p.blockNumberAck = reply.BlockNumberAck;
+                p.blockIndex = reply.BlockNumber;
                 p.Streaming = false;
-                reply = GXDLMS.GetLnMessages(p);
-                settings.IncreaseBlockIndex();
+                data = GXDLMS.GetLnMessages(p);
             }
             else
-            */
             {
                 // Get next block.
+                GXByteBuffer bb = new GXByteBuffer(4);
                 if (settings.UseLogicalNameReferencing)
                 {
                     bb.SetUInt32(settings.BlockIndex);
@@ -301,15 +315,15 @@ namespace Gurux.DLMS
                 if (settings.UseLogicalNameReferencing)
                 {
                     GXDLMSLNParameters p = new GXDLMSLNParameters(null, settings, 0, cmd, (byte)GetCommandType.NextDataBlock, bb, null, 0xff, Command.None);
-                    reply = GXDLMS.GetLnMessages(p);
+                    data = GXDLMS.GetLnMessages(p);
                 }
                 else
                 {
                     GXDLMSSNParameters p = new GXDLMSSNParameters(settings, cmd, 1, (byte)VariableAccessSpecification.BlockNumberAccess, bb, null);
-                    reply = GXDLMS.GetSnMessages(p);
+                    data = GXDLMS.GetSnMessages(p);
                 }
             }
-            return reply[0];
+            return data[0];
         }
 
         /// <summary>
@@ -319,7 +333,7 @@ namespace Gurux.DLMS
         /// <returns>Error as plain text.</returns>
         internal static string GetDescription(ErrorCode error)
         {
-#if !WINDOWS_UWP
+#if !WINDOWS_UWP && !__MOBILE__
             string str = null;
             switch (error)
             {
@@ -386,7 +400,76 @@ namespace Gurux.DLMS
             }
             return str;
 #else
+#if WINDOWS_UWP
             return error.ToString();
+#endif //WINDOWS_UWP
+#if __MOBILE__
+            string str = null;
+            switch (error)
+            {
+                case ErrorCode.Ok:
+                    str = "";
+                    break;
+                case ErrorCode.Rejected:
+                    str = Resources.Rejected;
+                    break;
+                case ErrorCode.UnacceptableFrame:
+                    str = Resources.UnacceptableFrame;
+                    break;
+                case ErrorCode.DisconnectMode:
+                    str = Resources.DisconnectMode;
+                    break;
+                case ErrorCode.HardwareFault: //Access Error : Device reports a hardware fault
+                    str = Resources.HardwareFaultTxt;
+                    break;
+                case ErrorCode.TemporaryFailure: //Access Error : Device reports a temporary failure
+                    str = Resources.TemporaryFailureTxt;
+                    break;
+                case ErrorCode.ReadWriteDenied: // Access Error : Device reports Read-Write denied
+                    str = Resources.ReadWriteDeniedTxt;
+                    break;
+                case ErrorCode.UndefinedObject: // Access Error : Device reports a undefined object
+                    str = Resources.UndefinedObjectTxt;
+                    break;
+                case ErrorCode.InconsistentClass: // Access Error : Device reports a inconsistent Class or object
+                    str = Resources.InconsistentClassTxt;
+                    break;
+                case ErrorCode.UnavailableObject: // Access Error : Device reports a unavailable object
+                    str = Resources.UnavailableObjectTxt;
+                    break;
+                case ErrorCode.UnmatchedType: // Access Error : Device reports a unmatched type
+                    str = Resources.UnmatchedTypeTxt;
+                    break;
+                case ErrorCode.AccessViolated: // Access Error : Device reports scope of access violated
+                    str = Resources.AccessViolatedTxt;
+                    break;
+                case ErrorCode.DataBlockUnavailable: // Access Error : Data Block Unavailable.
+                    str = Resources.DataBlockUnavailableTxt;
+                    break;
+                case ErrorCode.LongGetOrReadAborted: // Access Error : Long Get Or Read Aborted.
+                    str = Resources.LongGetOrReadAbortedTxt;
+                    break;
+                case ErrorCode.NoLongGetOrReadInProgress: // Access Error : No Long Get Or Read In Progress.
+                    str = Resources.NoLongGetOrReadInProgressTxt;
+                    break;
+                case ErrorCode.LongSetOrWriteAborted: // Access Error : Long Set Or Write Aborted.
+                    str = Resources.LongSetOrWriteAbortedTxt;
+                    break;
+                case ErrorCode.NoLongSetOrWriteInProgress: // Access Error : No Long Set Or Write In Progress.
+                    str = Resources.NoLongSetOrWriteInProgressTxt;
+                    break;
+                case ErrorCode.DataBlockNumberInvalid: // Access Error : Data Block Number Invalid.
+                    str = Resources.DataBlockNumberInvalidTxt;
+                    break;
+                case ErrorCode.OtherReason: // Access Error : Other Reason.
+                    str = Resources.OtherReasonTxt;
+                    break;
+                default:
+                    str = Resources.UnknownErrorTxt;
+                    break;
+            }
+            return str;
+#endif //__MOBILE__
 #endif
         }
 
@@ -883,6 +966,7 @@ namespace Gurux.DLMS
                                 {
                                     len = p.settings.MaxPduSize - 7;
                                 }
+                                ciphering = false;
                             }
                         }
                         else if (p.command != Command.GetRequest && len + reply.Size > p.settings.MaxPduSize)
@@ -907,12 +991,11 @@ namespace Gurux.DLMS
                         reply.Set(tmp);
                     }
                 }
-
-                if (p.command != Command.GeneralBlockTransfer && p.Owner != null && p.Owner.pdu != null)
+                if (reply.Size != 0 && p.command != Command.GeneralBlockTransfer && p.Owner != null && p.Owner.pdu != null)
                 {
                     p.Owner.pdu(p.Owner, reply.Array());
                 }
-                if (p.command != Command.ReleaseRequest && ciphering && ((p.settings.NegotiatedConformance & Conformance.GeneralBlockTransfer) == 0))
+                if (ciphering && reply.Size != 0 && p.command != Command.ReleaseRequest && (!p.multipleBlocks || (p.settings.NegotiatedConformance & Conformance.GeneralBlockTransfer) == 0))
                 {
                     //GBT ciphering is done for all the data, not just block.
                     byte[] tmp = Cipher0(p, reply.Array());
@@ -1998,41 +2081,6 @@ namespace Gurux.DLMS
         }
 
         /// <summary>
-        /// Encrypt Flag name to two bytes.
-        /// </summary>
-        /// <param name="flagName">3 letter Flag name.</param>
-        /// <returns>Encrypted Flag name.</returns>
-        static UInt16 EncryptManufacturer(string flagName)
-        {
-            if (flagName.Length != 3)
-            {
-                throw new ArgumentOutOfRangeException("Invalid Flag name.");
-            }
-            UInt16 value = (char)((flagName[0] - 0x40) & 0x1f);
-            value <<= 5;
-            value += (char)((flagName[1] - 0x40) & 0x1f);
-            value <<= 5;
-            value += (char)((flagName[2] - 0x40) & 0x1f);
-            return value;
-        }
-
-        /// <summary>
-        /// Descrypt two bytes to Flag name.
-        /// </summary>
-        /// <param name="value">Encrypted Flag name.</param>
-        /// <returns>Flag name.</returns>
-        static string DecryptManufacturer(UInt16 value)
-        {
-            UInt16 tmp = (UInt16)(value >> 8 | value << 8);
-            char c = (char)((tmp & 0x1f) + 0x40);
-            tmp = (UInt16)(tmp >> 5);
-            char c1 = (char)((tmp & 0x1f) + 0x40);
-            tmp = (UInt16)(tmp >> 5);
-            char c2 = (char)((tmp & 0x1f) + 0x40);
-            return new string(new char[] { c2, c1, c });
-        }
-
-        /// <summary>
         /// Get data from Wireless M-Bus frame.
         /// </summary>
         /// <param name="settings">DLMS settings.</param>
@@ -2062,7 +2110,7 @@ namespace Gurux.DLMS
                 MBusCommand cmd = (MBusCommand)buff.GetUInt8();
                 //M-Field.
                 UInt16 manufacturerID = buff.GetUInt16();
-                string man = DecryptManufacturer(manufacturerID);
+                string man = GXCommon.DecryptManufacturer(manufacturerID);
                 //A-Field.
                 UInt32 id = buff.GetUInt32();
                 byte meterVersion = buff.GetUInt8();
@@ -2277,9 +2325,9 @@ namespace Gurux.DLMS
             if (cnt != 1)
             {
                 values = new List<object>();
-                if (reply.Value is object[])
+                if (reply.Value is List<object>)
                 {
-                    values.AddRange((object[])reply.Value);
+                    values.AddRange((List<object>)reply.Value);
                 }
                 reply.Value = null;
             }
@@ -2678,6 +2726,55 @@ namespace Gurux.DLMS
             }
         }
 
+
+        /// <summary>
+        /// Handle get response with list.
+        /// </summary>
+        /// <param name="settings">DLMS settings.</param>
+        /// <param name="reply">Received data from the client.</param>
+        static void HandleGetResponseWithList(GXDLMSSettings settings, GXReplyData reply)
+        {
+            byte ch = 0;
+            //Get object count.
+            int cnt = GXCommon.GetObjectCount(reply.Data);
+            List<object> values = new List<object>(cnt);
+            if (reply.Xml != null)
+            {
+                //Result start tag.
+                reply.Xml.AppendStartTag(TranslatorTags.Result, "Qty", reply.Xml.IntegerToHex(cnt, 2));
+            }
+            for (int pos = 0; pos != cnt; ++pos)
+            {
+                // Result
+                ch = reply.Data.GetUInt8();
+                if (ch != 0)
+                {
+                    reply.Error = reply.Data.GetUInt8();
+                }
+                else
+                {
+                    if (reply.Xml != null)
+                    {
+                        GXDataInfo di = new GXDataInfo();
+                        di.xml = reply.Xml;
+                        //Data.
+                        reply.Xml.AppendStartTag(Command.ReadResponse, SingleReadResponse.Data);
+                        GXCommon.GetData(settings, reply.Data, di);
+                        reply.Xml.AppendEndTag(Command.ReadResponse, SingleReadResponse.Data);
+                    }
+                    else
+                    {
+                        reply.ReadPosition = reply.Data.Position;
+                        GetValueFromData(settings, reply);
+                        reply.Data.Position = reply.ReadPosition;
+                        values.Add(reply.Value);
+                        reply.Value = null;
+                    }
+                }
+            }
+            reply.Value = values;
+        }
+
         /// <summary>
         /// Handle get response and get data from block and/or update error status.
         /// </summary>
@@ -2862,50 +2959,16 @@ namespace Gurux.DLMS
                     //Empty block. Conformance tests uses this.
                     reply.EmptyResponses |= RequestTypes.DataBlock;
                 }
+                if (reply.MoreData == RequestTypes.None && settings != null && settings.Command == Command.GetRequest &&
+                    settings.CommandType == (byte)GetCommandType.WithList)
+                {
+                    HandleGetResponseWithList(settings, reply);
+                    ret = false;
+                }
             }
             else if (type == GetCommandType.WithList)
             {
-                //Get object count.
-                int cnt = GXCommon.GetObjectCount(data);
-                object[] values = new object[cnt];
-                if (reply.Xml != null)
-                {
-                    //Result start tag.
-                    reply.Xml.AppendStartTag(TranslatorTags.Result, "Qty", reply.Xml.IntegerToHex(cnt, 2));
-                }
-                for (int pos = 0; pos != cnt; ++pos)
-                {
-                    // Result
-                    ch = data.GetUInt8();
-                    if (ch != 0)
-                    {
-                        reply.Error = data.GetUInt8();
-                    }
-                    else
-                    {
-                        if (reply.Xml != null)
-                        {
-                            GXDataInfo di = new GXDataInfo();
-                            di.xml = reply.Xml;
-                            //Data.
-                            reply.Xml.AppendStartTag(Command.ReadResponse, SingleReadResponse.Data);
-                            GXCommon.GetData(settings, reply.Data, di);
-                            reply.Xml.AppendEndTag(Command.ReadResponse, SingleReadResponse.Data);
-                        }
-                        else
-                        {
-                            reply.ReadPosition = reply.Data.Position;
-                            GetValueFromData(settings, reply);
-                            reply.Data.Position = reply.ReadPosition;
-                            if (values != null)
-                            {
-                                values[pos] = reply.Value;
-                            }
-                            reply.Value = null;
-                        }
-                    }
-                }
-                reply.Value = values;
+                HandleGetResponseWithList(settings, reply);
                 ret = false;
             }
             else
@@ -2943,6 +3006,10 @@ namespace Gurux.DLMS
             data.BlockNumber = data.Data.GetUInt16();
             //Block number acknowledged.
             data.BlockNumberAck = data.Data.GetUInt16();
+            if (data.Xml == null && data.BlockNumberAck != settings.BlockIndex - 1)
+            {
+                System.Diagnostics.Debug.Write("Invalid GBT ACK.");
+            }
             settings.BlockNumberAck = data.BlockNumber;
             data.Command = Command.None;
             int len = GXCommon.GetObjectCount(data.Data);
@@ -2970,7 +3037,7 @@ namespace Gurux.DLMS
                 data.Xml.AppendLine(TranslatorTags.BlockNumber, null, data.Xml.IntegerToHex(data.BlockNumber, 4));
                 data.Xml.AppendLine(TranslatorTags.BlockNumberAck, null, data.Xml.IntegerToHex(data.BlockNumberAck, 4));
                 //If last block and comments.
-                if ((bc & 0x80) != 0 && data.Xml.Comments)
+                if ((bc & 0x80) != 0 && data.Xml.Comments && data.Data.Available != 0)
                 {
                     int pos = data.Data.Position;
                     int len2 = data.Xml.GetXmlLength();
@@ -2998,11 +3065,11 @@ namespace Gurux.DLMS
             //Is Last block,
             if ((bc & 0x80) == 0)
             {
-                data.MoreData |= RequestTypes.DataBlock;
+                data.MoreData |= RequestTypes.GBT;
             }
             else
             {
-                data.MoreData &= ~RequestTypes.DataBlock;
+                data.MoreData &= ~RequestTypes.GBT;
                 if (data.Data.Size != 0)
                 {
                     data.Data.Position = 0;
@@ -3351,10 +3418,9 @@ namespace Gurux.DLMS
                 }
                 if (cmd == Command.GeneralBlockTransfer)
                 {
-                    if (!data.IsMoreData)
-                    {
-                        HandleGbt(settings, data);
-                    }
+                    data.Data.Position = data.CipherIndex + 1;
+                    HandleGbt(settings, data);
+                    data.CipherIndex = data.Data.Size;
                     data.Command = Command.None;
                 }
                 else if (settings.IsServer)
@@ -3623,7 +3689,7 @@ namespace Gurux.DLMS
         {
             GXByteBuffer data = reply.Data;
             GXDataInfo info = new GXDataInfo();
-            if (reply.Value is Object[])
+            if (reply.Value is List<object>)
             {
                 info.Type = DataType.Array;
                 info.Count = reply.TotalCount;
@@ -3639,7 +3705,7 @@ namespace Gurux.DLMS
                     lock (reply)
                     {
                         // If new data.
-                        if (!(value is Object[]))
+                        if (!(value is List<object>))
                         {
                             reply.DataType = info.Type;
                             reply.Value = value;
@@ -3648,7 +3714,7 @@ namespace Gurux.DLMS
                         }
                         else
                         {
-                            if (((Object[])value).Length != 0)
+                            if (((List<object>)value).Count != 0)
                             {
                                 if (reply.Value == null)
                                 {
@@ -3657,10 +3723,7 @@ namespace Gurux.DLMS
                                 else
                                 {
                                     // Add items to collection.
-                                    List<Object> list = new List<Object>();
-                                    list.AddRange((Object[])reply.Value);
-                                    list.AddRange((Object[])value);
-                                    reply.Value = list.ToArray();
+                                    ((List<object>)reply.Value).AddRange((List<object>)value);
                                 }
                             }
                             reply.ReadPosition = data.Position;

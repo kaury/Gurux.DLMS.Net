@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -95,7 +95,7 @@ namespace Gurux.DLMS
         /// Constructor for AARE error.
         /// </summary>
         internal GXDLMSException(AssociationResult result, SourceDiagnostic diagnostic)
-            : base("Connection is " + GetResult(result) + ". " + GetDiagnostic(result, (byte) diagnostic))
+            : base("Connection is " + GetResult(result) + ". " + GetDiagnostic(diagnostic))
         {
             Result = result;
             Diagnostic = (byte)diagnostic;
@@ -105,11 +105,11 @@ namespace Gurux.DLMS
         /// <summary>
         /// Constructor for AARE error.
         /// </summary>
-        internal GXDLMSException(AssociationResult result, byte diagnostic)
-            : base("Connection is " + GetResult(result) + ". " + GetDiagnostic(result, diagnostic))
+        internal GXDLMSException(AssociationResult result, AcseServiceProvider diagnostic)
+            : base("Connection is " + GetResult(result) + ". " + GetDiagnostic(diagnostic))
         {
             Result = result;
-            Diagnostic = diagnostic;
+            Diagnostic = (byte) diagnostic;
         }
 
         /// <summary>
@@ -135,80 +135,85 @@ namespace Gurux.DLMS
         /// </summary>
         /// <param name="diagnostic"></param>
         /// <returns></returns>
-        static string GetDiagnostic(AssociationResult result, byte diagnostic)
+        static string GetDiagnostic(AcseServiceProvider diagnostic)
         {
             string str;
-            if (result == AssociationResult.TransientRejected)
+            switch (diagnostic)
             {
-                switch ((AcseServiceProvider)diagnostic)
-                {
-                    case AcseServiceProvider.None:
-                        str = "None.";
-                        break;
-                    case AcseServiceProvider.NoReasonGiven:
-                        str = "No reason given.";
-                        break;
-                    case AcseServiceProvider.NoCommonAcseVersion:
-                        str = "No Common AcseVersion.";
-                        break;
-                    default:
-                        str = "Unknown diagnostic error.";
-                        break;
-                }
+                case AcseServiceProvider.None:
+                    str = "None.";
+                    break;
+                case AcseServiceProvider.NoReasonGiven:
+                    str = "No reason given.";
+                    break;
+                case AcseServiceProvider.NoCommonAcseVersion:
+                    str = "No Common AcseVersion.";
+                    break;
+                default:
+                    str = "Unknown diagnostic error.";
+                    break;
             }
-            else
+            return str;
+        }
+
+        /// <summary>
+        /// Get diagnostic as a string.
+        /// </summary>
+        /// <param name="diagnostic"></param>
+        /// <returns></returns>
+        static string GetDiagnostic(SourceDiagnostic diagnostic)
+        {
+            string str;
+            switch (diagnostic)
             {
-                switch ((SourceDiagnostic)diagnostic)
-                {
-                    case SourceDiagnostic.None:
-                        str = "None";
-                        break;
-                    case SourceDiagnostic.NoReasonGiven:
-                        str = "No reason is given.";
-                        break;
-                    case SourceDiagnostic.ApplicationContextNameNotSupported:
-                        str = "The application context name is not supported.";
-                        break;
-                    case SourceDiagnostic.CallingApTitleNotRecognized:
-                        str = "Calling AP title not recognized.";
-                        break;
-                    case SourceDiagnostic.CallingApInvocationIdentifierNotRecognized:
-                        str = "The authentication mechanism name is not recognized.";
-                        break;
-                    case SourceDiagnostic.CallingAeQualifierNotRecognized:
-                        str = "Calling AE qualifier not recognized.";
-                        break;
-                    case SourceDiagnostic.CallingAeInvocationIdentifierNotRecognized:
-                        str = "Calling AE invocation identifier not recognized";
-                        break;
-                    case SourceDiagnostic.CalledApTitleNotRecognized:
-                        str = "called AP title not recognized.";
-                        break;
-                    case SourceDiagnostic.CalledApInvocationIdentifierNotRecognized:
-                        str = "Called AP invocation identifier not recognized.";
-                        break;
-                    case SourceDiagnostic.CalledAeQualifierNotRecognized:
-                        str = "Called AE qualifier not recognized.";
-                        break;
-                    case SourceDiagnostic.CalledAeInvocationIdentifierNotRecognized:
-                        str = "Called AE invocation identifier not recognized.";
-                        break;
-                    case SourceDiagnostic.AuthenticationMechanismNameNotRecognised:
-                        str = "Authentication mechanism name not recognised.";
-                        break;
-                    case SourceDiagnostic.AuthenticationMechanismNameReguired:
-                        str = "Authentication mechanism name is required.";
-                        break;
-                    case SourceDiagnostic.AuthenticationFailure:
-                        str = "Authentication failure.";
-                        break;
-                    case SourceDiagnostic.AuthenticationRequired:
-                        str = "Authentication is required.";
-                        break;
-                    default:
-                        str = "Unknown diagnostic error.";
-                        break;
-                }
+                case SourceDiagnostic.None:
+                    str = "None";
+                    break;
+                case SourceDiagnostic.NoReasonGiven:
+                    str = "No reason is given.";
+                    break;
+                case SourceDiagnostic.ApplicationContextNameNotSupported:
+                    str = "The application context name is not supported.";
+                    break;
+                case SourceDiagnostic.CallingApTitleNotRecognized:
+                    str = "Calling AP title not recognized.";
+                    break;
+                case SourceDiagnostic.CallingApInvocationIdentifierNotRecognized:
+                    str = "The authentication mechanism name is not recognized.";
+                    break;
+                case SourceDiagnostic.CallingAeQualifierNotRecognized:
+                    str = "Calling AE qualifier not recognized.";
+                    break;
+                case SourceDiagnostic.CallingAeInvocationIdentifierNotRecognized:
+                    str = "Calling AE invocation identifier not recognized";
+                    break;
+                case SourceDiagnostic.CalledApTitleNotRecognized:
+                    str = "called AP title not recognized.";
+                    break;
+                case SourceDiagnostic.CalledApInvocationIdentifierNotRecognized:
+                    str = "Called AP invocation identifier not recognized.";
+                    break;
+                case SourceDiagnostic.CalledAeQualifierNotRecognized:
+                    str = "Called AE qualifier not recognized.";
+                    break;
+                case SourceDiagnostic.CalledAeInvocationIdentifierNotRecognized:
+                    str = "Called AE invocation identifier not recognized.";
+                    break;
+                case SourceDiagnostic.AuthenticationMechanismNameNotRecognised:
+                    str = "Authentication mechanism name not recognised.";
+                    break;
+                case SourceDiagnostic.AuthenticationMechanismNameReguired:
+                    str = "Authentication mechanism name is required.";
+                    break;
+                case SourceDiagnostic.AuthenticationFailure:
+                    str = "Authentication failure.";
+                    break;
+                case SourceDiagnostic.AuthenticationRequired:
+                    str = "Authentication is required.";
+                    break;
+                default:
+                    str = "Unknown diagnostic error.";
+                    break;
             }
             return str;
         }

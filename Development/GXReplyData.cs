@@ -26,12 +26,13 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
 using System;
+using System.Collections.Generic;
 using Gurux.DLMS.Enums;
 
 namespace Gurux.DLMS
@@ -203,7 +204,7 @@ namespace Gurux.DLMS
         }
 
         /// <summary>
-        /// Cipher index is position where data is decrypted.
+        /// Cipher index is position where data is decrypted or GBT is read.
         /// </summary>
         public int CipherIndex
         {
@@ -374,9 +375,9 @@ namespace Gurux.DLMS
         {
             get
             {
-                if (Value is object[])
+                if (Value is List<object>)
                 {
-                    return ((object[])Value).Length;
+                    return ((List<object>)Value).Count;
                 }
                 return 0;
             }

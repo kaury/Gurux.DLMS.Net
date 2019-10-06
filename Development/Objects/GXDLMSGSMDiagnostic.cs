@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -65,7 +65,7 @@ namespace Gurux.DLMS.Objects
 
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSGSMDiagnostic
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSGSMDiagnostic
     /// </summary>
     public class GXDLMSGSMDiagnostic : GXDLMSObject, IGXDLMSBase
     {
@@ -96,6 +96,7 @@ namespace Gurux.DLMS.Objects
         {
             CellInfo = new GXDLMSGSMCellInfo();
             AdjacentCells = new List<AdjacentCell>();
+            Version = 1;
         }
 
         /// <summary>
@@ -366,7 +367,7 @@ namespace Gurux.DLMS.Objects
                 case 6:
                     if (e.Value != null)
                     {
-                        object[] tmp = (object[])e.Value;
+                        List<object> tmp = (List<object>)e.Value;
                         CellInfo.CellId = Convert.ToUInt32(tmp[0]);
                         CellInfo.LocationId = (UInt16)tmp[1];
                         CellInfo.SignalQuality = (byte)tmp[2];
@@ -383,12 +384,11 @@ namespace Gurux.DLMS.Objects
                     AdjacentCells.Clear();
                     if (e.Value != null)
                     {
-                        foreach (object it in (object[])e.Value)
+                        foreach (List<object> it in (List<object>)e.Value)
                         {
-                            object[] tmp = (object[])it;
                             AdjacentCell ac = new Objects.AdjacentCell();
-                            ac.CellId = Convert.ToUInt32(tmp[0]);
-                            ac.SignalQuality = (byte)tmp[1];
+                            ac.CellId = Convert.ToUInt32(it[0]);
+                            ac.SignalQuality = (byte)it[1];
                             AdjacentCells.Add(ac);
                         }
                     }

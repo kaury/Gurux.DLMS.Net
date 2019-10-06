@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -37,6 +37,7 @@ using System.Collections.Generic;
 using System.Text;
 using Gurux.DLMS.Enums;
 using System.Diagnostics;
+using System.Net;
 
 namespace Gurux.DLMS.Internal
 {
@@ -320,6 +321,12 @@ namespace Gurux.DLMS.Internal
                 {
                     return data.GetUInt16();
                 }
+                else if (cnt == 0x83)
+                {
+                    cnt = data.GetUInt24(data.Position);
+                    data.Position += 3;
+                    return cnt;
+                }
                 else if (cnt == 0x84)
                 {
                     return (int)data.GetUInt32();
@@ -516,7 +523,6 @@ namespace Gurux.DLMS.Internal
         ///</returns>
         private static object GetArray(GXDLMSSettings settings, GXByteBuffer buff, GXDataInfo info, int index)
         {
-            object value;
             if (info.Count == 0)
             {
                 info.Count = GXCommon.GetObjectCount(buff);
@@ -533,7 +539,15 @@ namespace Gurux.DLMS.Internal
                 return null;
             }
             int startIndex = index;
-            List<object> arr = new List<object>();
+            List<object> arr;
+            if (info.Type == DataType.Array)
+            {
+                arr = new GXArray();
+            }
+            else
+            {
+                arr = new GXStructure();
+            }
             // Position where last row was found. Cache uses this info.
             int pos = info.Index;
             for (; pos != info.Count; ++pos)
@@ -561,8 +575,7 @@ namespace Gurux.DLMS.Internal
                 info.xml.AppendEndTag(GXDLMS.DATA_TYPE_OFFSET + (int)info.Type);
             }
             info.Index = pos;
-            value = arr.ToArray();
-            return value;
+            return arr;
         }
 
         ///<summary>
@@ -1027,21 +1040,29 @@ namespace Gurux.DLMS.Internal
             return value;
         }
 
-        private static void GetCompactArrayItem(GXDLMSSettings settings, GXByteBuffer buff, object[] dt, List<Object> list, int len)
+        private static void GetCompactArrayItem(GXDLMSSettings settings, GXByteBuffer buff, List<object> dt, List<Object> list, int len, bool array)
         {
-            List<object> tmp2 = new List<object>();
+            List<object> tmp;
+            if (array)
+            {
+                tmp = new GXArray();
+            }
+            else
+            {
+                tmp = new GXStructure();
+            }
             foreach (object it in dt)
             {
                 if (it is DataType)
                 {
-                    GetCompactArrayItem(settings, buff, (DataType)it, tmp2, 1);
+                    GetCompactArrayItem(settings, buff, (DataType)it, tmp, 1);
                 }
                 else
                 {
-                    GetCompactArrayItem(settings, buff, (object[])it, tmp2, 1);
+                    GetCompactArrayItem(settings, buff, (List<object>)it, tmp, 1, it is GXArray);
                 }
             }
-            list.Add(tmp2.ToArray());
+            list.Add(tmp);
         }
 
         private static void GetCompactArrayItem(GXDLMSSettings settings, GXByteBuffer buff, DataType dt, List<Object> list, int len)
@@ -1100,19 +1121,19 @@ namespace Gurux.DLMS.Internal
                 {
                     int cnt = buff.GetUInt16();
                     List<object> tmp = new List<object>();
-                    List<object> tmp2 = new List<object>();
+                    GXArray tmp2 = new GXArray();
                     GetDataTypes(buff, tmp, 1);
                     for (int i = 0; i != cnt; ++i)
                     {
-                        tmp2.AddRange(tmp);
+                        tmp2.Add(tmp[0]);
                     }
                     cols.Add(tmp2);
                 }
                 else if (dt == DataType.Structure)
                 {
-                    List<object> tmp = new List<object>();
+                    GXStructure tmp = new GXStructure();
                     GetDataTypes(buff, tmp, buff.GetUInt8());
-                    cols.Add(tmp.ToArray());
+                    cols.Add(tmp);
                 }
                 else
                 {
@@ -1122,7 +1143,7 @@ namespace Gurux.DLMS.Internal
         }
 
 
-        private static void AppendDataTypeAsXml(object[] cols, GXDataInfo info)
+        private static void AppendDataTypeAsXml(List<object> cols, GXDataInfo info)
         {
             foreach (object it in cols)
             {
@@ -1130,19 +1151,47 @@ namespace Gurux.DLMS.Internal
                 {
                     info.xml.AppendEmptyTag(info.xml.GetDataType((DataType)it));
                 }
-                else if (it is object[])
+                else if (it is GXStructure)
                 {
                     info.xml.AppendStartTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Structure, null, null);
-                    AppendDataTypeAsXml((object[])it, info);
+                    AppendDataTypeAsXml((List<object>)it, info);
                     info.xml.AppendEndTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Structure);
                 }
                 else
                 {
                     info.xml.AppendStartTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Array, null, null);
-                    AppendDataTypeAsXml(((List<Object>)it).ToArray(), info);
+                    AppendDataTypeAsXml(((List<Object>)it), info);
                     info.xml.AppendEndTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Array);
                 }
             }
+        }
+
+        private static void ToString(object it, StringBuilder sb)
+        {
+            if (it is byte[])
+            {
+                sb.Append(GXCommon.ToHex((byte[])it, true));
+            }
+            else if (it is IEnumerable<object>)
+            {
+                bool empty = true;
+                //                sb.Append("[");
+                foreach (object it2 in (IEnumerable<object>)it)
+                {
+                    empty = false;
+                    ToString(it2, sb);
+                }
+                if (!empty)
+                {
+                    --sb.Length;
+                }
+                //                sb.Append("]");
+            }
+            else
+            {
+                sb.Append(Convert.ToString(it));
+            }
+            sb.Append(";");
         }
 
         /// <summary>
@@ -1166,15 +1215,23 @@ namespace Gurux.DLMS.Internal
                 throw new ArgumentException("Invalid compact array data.");
             }
             int len = GXCommon.GetObjectCount(buff);
-            List<Object> list = new List<Object>();
+            List<Object> list;
+            if (dt == DataType.Structure)
+            {
+                list = new GXStructure();
+            }
+            else
+            {
+                list = new GXArray();
+            }
             if (dt == DataType.Structure)
             {
                 // Get data types.
-                List<object> cols = new List<object>();
+                GXStructure cols = new GXStructure();
                 GetDataTypes(buff, cols, len);
                 if (onlyDataTypes)
                 {
-                    return cols.ToArray();
+                    return cols;
                 }
                 if (buff.Position == buff.Size)
                 {
@@ -1188,7 +1245,7 @@ namespace Gurux.DLMS.Internal
                 {
                     info.xml.AppendStartTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.CompactArray, null, null);
                     info.xml.AppendStartTag(TranslatorTags.ContentsDescription);
-                    AppendDataTypeAsXml(cols.ToArray(), info);
+                    AppendDataTypeAsXml(cols, info);
                     info.xml.AppendEndTag(TranslatorTags.ContentsDescription);
                     if (info.xml.OutputType == TranslatorOutputType.StandardXml)
                     {
@@ -1205,18 +1262,21 @@ namespace Gurux.DLMS.Internal
                 int start = buff.Position;
                 while (buff.Position - start < len)
                 {
-                    List<Object> row = new List<Object>();
+                    GXStructure row = new GXStructure();
                     for (int pos = 0; pos != cols.Count; ++pos)
                     {
-                        if (cols[pos] is object[])
+                        if (cols[pos] is GXStructure)
                         {
-                            GetCompactArrayItem(null, buff, (object[])cols[pos], row, 1);
+                            GetCompactArrayItem(null, buff, (List<object>)cols[pos], row, 1, false);
                         }
-                        else if (cols[pos] is List<object>)
+                        else if (cols[pos] is GXArray)
                         {
-                            List<object> tmp2 = new List<object>();
-                            GetCompactArrayItem(null, buff, ((List<object>)cols[pos]).ToArray(), tmp2, 1);
-                            row.AddRange((Object[])tmp2[0]);
+                            //For some reason there is count here in Italy standard. Remove it.
+                            if (info.AppendAA)
+                            {
+                                GXCommon.GetObjectCount(buff);
+                            }
+                            GetCompactArrayItem(null, buff, ((List<object>)cols[pos]), row, 1, true);
                         }
                         else
                         {
@@ -1230,7 +1290,7 @@ namespace Gurux.DLMS.Internal
                     //If all columns are read.
                     if (row.Count >= cols.Count)
                     {
-                        list.Add(row.ToArray());
+                        list.Add(row);
                     }
                     else
                     {
@@ -1240,38 +1300,11 @@ namespace Gurux.DLMS.Internal
                 if (info.xml != null && info.xml.OutputType == TranslatorOutputType.SimpleXml)
                 {
                     StringBuilder sb = new StringBuilder();
-                    foreach (object[] row in list)
+                    foreach (List<object> row in list)
                     {
                         foreach (object it in row)
                         {
-                            if (it is byte[])
-                            {
-                                sb.Append(GXCommon.ToHex((byte[])it, true));
-                            }
-                            else if (it is object[])
-                            {
-                                foreach (object it2 in (object[])it)
-                                {
-                                    if (it2 is byte[])
-                                    {
-                                        sb.Append(GXCommon.ToHex((byte[])it2, true));
-                                    }
-                                    else
-                                    {
-                                        sb.Append(Convert.ToString(it2));
-                                    }
-                                    sb.Append(";");
-                                }
-                                if (((object[])it).Length != 0)
-                                {
-                                    --sb.Length;
-                                }
-                            }
-                            else
-                            {
-                                sb.Append(Convert.ToString(it));
-                            }
-                            sb.Append(";");
+                            ToString(it, sb);
                         }
                         if (sb.Length != 0)
                         {
@@ -1286,7 +1319,7 @@ namespace Gurux.DLMS.Internal
                     info.xml.AppendEndTag(TranslatorTags.ArrayContents);
                     info.xml.AppendEndTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.CompactArray);
                 }
-                return list.ToArray();
+                return list;
             }
             else
             {
@@ -1327,7 +1360,7 @@ namespace Gurux.DLMS.Internal
                     info.xml.AppendEndTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.CompactArray);
                 }
             }
-            return list.ToArray();
+            return list;
         }
 
         ///<summary>
@@ -1506,12 +1539,17 @@ namespace Gurux.DLMS.Internal
                     return (buff[0] & 0xFF) + "." + (buff[1] & 0xFF) + "." + (buff[2] & 0xFF) + "." +
                            (buff[3] & 0xFF) + "." + (buff[4] & 0xFF) + "." + (buff[5] & 0xFF);
                 }
-#if !WINDOWS_UWP
+#if !WINDOWS_UWP && !__MOBILE__
                 throw new ArgumentException(Properties.Resources.InvalidLogicalName);
 #else
+#if WINDOWS_UWP
                 var loader = new Windows.ApplicationModel.Resources.ResourceLoader();
                 throw new ArgumentException(loader.GetString("InvalidLogicalName"));
-#endif
+#endif //WINDOWS_UWP
+#if __MOBILE__
+                throw new ArgumentException(Resources.InvalidLogicalName);
+#endif //__MOBILE__
+#endif //!WINDOWS_UWP && !__MOBILE__
             }
             return Convert.ToString(value);
         }
@@ -1526,12 +1564,17 @@ namespace Gurux.DLMS.Internal
             // If data is string.
             if (items.Length != 6)
             {
-#if !WINDOWS_UWP
+#if !WINDOWS_UWP && !__MOBILE__
                 throw new ArgumentException(Properties.Resources.InvalidLogicalName);
 #else
+#if WINDOWS_UWP
                 var loader = new Windows.ApplicationModel.Resources.ResourceLoader();
                 throw new ArgumentException(loader.GetString("InvalidLogicalName"));
-#endif
+#endif //WINDOWS_UWP
+#if __MOBILE__
+                throw new ArgumentException(Resources.InvalidLogicalName);
+#endif //__MOBILE__
+#endif //!WINDOWS_UWP && !__MOBILE__
             }
             byte[] buff = new byte[6];
             byte pos = 0;
@@ -1545,12 +1588,17 @@ namespace Gurux.DLMS.Internal
             }
             catch (Exception)
             {
-#if !WINDOWS_UWP
+#if !WINDOWS_UWP && !__MOBILE__
                 throw new ArgumentException(Properties.Resources.InvalidLogicalName);
 #else
+#if WINDOWS_UWP
                 var loader = new Windows.ApplicationModel.Resources.ResourceLoader();
                 throw new ArgumentException(loader.GetString("InvalidLogicalName"));
-#endif
+#endif //WINDOWS_UWP
+#if __MOBILE__
+                throw new ArgumentException(Resources.InvalidLogicalName);
+#endif //__MOBILE__
+#endif //!WINDOWS_UWP && !__MOBILE__
             }
             return buff;
         }
@@ -1955,7 +2003,18 @@ namespace Gurux.DLMS.Internal
                     buff.SetUInt16(Convert.ToUInt16(value));
                     break;
                 case DataType.Int32:
-                    buff.SetUInt32((UInt32)Convert.ToInt32(value));
+                    if (value is DateTime)
+                    {
+                        buff.SetUInt32((UInt32)GXDateTime.ToUnixTime((DateTime)value));
+                    }
+                    else if (value is GXDateTime)
+                    {
+                        buff.SetUInt32((UInt32)GXDateTime.ToUnixTime(((GXDateTime)value).Value.DateTime));
+                    }
+                    else
+                    {
+                        buff.SetUInt32((UInt32)Convert.ToInt32(value));
+                    }
                     break;
                 case DataType.UInt32:
                     buff.SetUInt32(Convert.ToUInt32(value));
@@ -2375,9 +2434,18 @@ namespace Gurux.DLMS.Internal
         {
             if (value != null)
             {
-                object[] arr = (object[])value;
-                SetObjectCount(arr.Length, buff);
-                foreach (object it in arr)
+                List<object> tmp;
+                if (value is List<object>)
+                {
+                    tmp = (List<object>)value;
+                }
+                else
+                {
+                    tmp = new List<object>();
+                    tmp.AddRange((object[])value);
+                }
+                SetObjectCount(tmp.Count, buff);
+                foreach (object it in tmp)
                 {
                     DataType dt = GXDLMSConverter.GetDLMSDataType(it);
                     if (dt == DataType.Array)
@@ -2552,12 +2620,17 @@ namespace Gurux.DLMS.Internal
         /// <returns></returns>
         public static string GetLogicalNameString()
         {
-#if !WINDOWS_UWP
+#if !WINDOWS_UWP && !__MOBILE__
             return Gurux.DLMS.Properties.Resources.LogicalNameTxt;
 #else
+#if WINDOWS_UWP
             var loader = new Windows.ApplicationModel.Resources.ResourceLoader();
             return loader.GetString("LogicalNameTxt");
-#endif
+#endif //WINDOWS_UWP
+#if __MOBILE__
+            return Resources.LogicalNameTxt;
+#endif //__MOBILE__
+#endif //!WINDOWS_UWP && !__MOBILE__
         }
 
 #if WINDOWS_UWP
@@ -2583,9 +2656,10 @@ namespace Gurux.DLMS.Internal
                 case DataType.None:
                     return null;
                 case DataType.Array:
+                    return typeof(GXArray);
                 case DataType.CompactArray:
                 case DataType.Structure:
-                    return typeof(object[]);
+                    return typeof(GXStructure);
                 case DataType.Bcd:
                     return typeof(string);
                 case DataType.BitString:
@@ -2699,7 +2773,11 @@ namespace Gurux.DLMS.Internal
             {
                 return DataType.OctetString;
             }
-            else if (type == typeof(object[]))
+            else if (type == typeof(GXStructure))
+            {
+                return DataType.Structure;
+            }
+            else if (type == typeof(GXArray) || type == typeof(object[]))
             {
                 return DataType.Array;
             }
@@ -2769,35 +2847,157 @@ namespace Gurux.DLMS.Internal
             {
                 xml.AppendEmptyTag(xml.GetDataType(DataType.None));
             }
-            else if (value is object[])
+            else if (value is GXStructure)
             {
-                bool array = xml.GetXmlLength() == 0;
-                if (array)
-                {
-                    xml.AppendStartTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Array, null, null);
-                }
-                else
-                {
-                    xml.AppendStartTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Structure, null, null);
-                }
-                foreach (object it in (object[])value)
+                xml.AppendStartTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Structure, null, null);
+                foreach (object it in (List<object>)value)
                 {
                     DatatoXml(it, xml);
                 }
-                if (array)
+                xml.AppendEndTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Structure);
+            }
+            else if (value is GXArray)
+            {
+                xml.AppendStartTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Array, null, null);
+                foreach (object it in (List<object>)value)
                 {
-                    xml.AppendEndTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Array);
+                    DatatoXml(it, xml);
                 }
-                else
-                {
-                    xml.AppendEndTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Structure);
-                }
+                xml.AppendEndTag(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.Array);
+            }
+            else if (value is IPAddress)
+            {
+                xml.AppendLine(GXDLMS.DATA_TYPE_OFFSET + (int)DataType.OctetString, null, ((IPAddress)value).GetAddressBytes());
             }
             else
             {
                 DataType dt = GetDLMSDataType(value.GetType());
                 xml.AppendLine(GXDLMS.DATA_TYPE_OFFSET + (int)dt, null, value);
             }
+        }
+
+        /// <summary>
+        /// Encrypt Flag name to two bytes.
+        /// </summary>
+        /// <param name="flagName">3 letter Flag name.</param>
+        /// <returns>Encrypted Flag name.</returns>
+        public static UInt16 EncryptManufacturer(string flagName)
+        {
+            if (flagName.Length != 3)
+            {
+                throw new ArgumentOutOfRangeException("Invalid Flag name.");
+            }
+            UInt16 value = (char)((flagName[0] - 0x40) & 0x1f);
+            value <<= 5;
+            value += (char)((flagName[1] - 0x40) & 0x1f);
+            value <<= 5;
+            value += (char)((flagName[2] - 0x40) & 0x1f);
+            return value;
+        }
+
+        /// <summary>
+        /// Descrypt two bytes to Flag name.
+        /// </summary>
+        /// <param name="value">Encrypted Flag name.</param>
+        /// <returns>Flag name.</returns>
+        public static string DecryptManufacturer(UInt16 value)
+        {
+            UInt16 tmp = (UInt16)(value >> 8 | value << 8);
+            char c = (char)((tmp & 0x1f) + 0x40);
+            tmp = (UInt16)(tmp >> 5);
+            char c1 = (char)((tmp & 0x1f) + 0x40);
+            tmp = (UInt16)(tmp >> 5);
+            char c2 = (char)((tmp & 0x1f) + 0x40);
+            return new string(new char[] { c2, c1, c });
+        }
+
+        static string IdisSystemTitleToString(byte[] st)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("");
+            sb.AppendLine("IDIS system title:");
+            sb.Append("Manufacturer Code: ");
+            sb.AppendLine(new string(new char[] { (char)st[0], (char)st[1], (char)st[2] }));
+            sb.Append("Function type: ");
+            int ft = st[4] >> 4;
+            bool add = false;
+            if ((ft & 0x1) != 0)
+            {
+                sb.Append("Disconnector extension");
+                add = true;
+            }
+            if ((ft & 0x2) != 0)
+            {
+                if (add)
+                {
+                    sb.Append(", ");
+                }
+                add = true;
+                sb.Append("Load Management extension");
+            }
+            if ((ft & 0x4) != 0)
+            {
+                if (add)
+                {
+                    sb.Append(", ");
+                }
+                sb.Append("Multi Utility extension");
+            }
+            //Serial number;
+            int sn = (st[4] & 0xF) << 24;
+            sn |= (st[5] << 16);
+            sn |= (st[6] << 8);
+            sn |= (st[7]);
+            sb.AppendLine("");
+            sb.Append("Serial number: ");
+            sb.AppendLine(sn.ToString());
+            return sb.ToString();
+        }
+
+        static string DlmsSystemTitleToString(byte[] st)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("");
+            sb.AppendLine("IDIS system title:");
+            sb.Append("Manufacturer Code: ");
+            sb.AppendLine(new string(new char[] { (char)st[0], (char)st[1], (char)st[2] }));
+            sb.Append("Serial number: ");
+            sb.AppendLine(new string(new char[] { (char)st[3], (char)st[4], (char)st[5], (char)st[6], (char)st[7] }));
+            return sb.ToString();
+        }
+
+        static string UNISystemTitleToString(byte[] st)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("");
+            sb.AppendLine("UNI/TS system title:");
+            sb.Append("Manufacturer: ");
+            UInt16 m = (UInt16)(st[0] << 8 | st[1]);
+            sb.AppendLine(DecryptManufacturer(m));
+            sb.Append("Serial number: ");
+            sb.AppendLine(ToHex(new byte[] { st[7], st[6], st[5], st[4], st[3], st[2] }, false));
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Conver system title to string.
+        /// </summary>
+        /// <param name="standard"></param>
+        /// <param name="st"></param>
+        /// <returns></returns>
+        public static string SystemTitleToString(Standard standard, byte[] st)
+        {
+            if (standard == Standard.Italy || !Char.IsLetter((char)st[0]) || !Char.IsLetter((char)st[1]) ||
+                !Char.IsLetter((char)st[2]))
+            {
+                return UNISystemTitleToString(st);
+            }
+            if (standard == Standard.Idis || !Char.IsNumber((char)st[3]) || !Char.IsNumber((char)st[4]) ||
+                !Char.IsNumber((char)st[5]) || !Char.IsNumber((char)st[6]) || !Char.IsNumber((char)st[7]))
+            {
+                return IdisSystemTitleToString(st);
+            }
+            return DlmsSystemTitleToString(st);
         }
     }
 }

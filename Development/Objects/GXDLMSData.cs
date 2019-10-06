@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -42,7 +42,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSData
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSData
     /// </summary>
     public class GXDLMSData : GXDLMSObject, IGXDLMSBase
     {
@@ -174,9 +174,13 @@ namespace Gurux.DLMS.Objects
                     break;
                 case 2:
                     DataType dt = GetDataType(2);
-                    if (!e.User && e.Value != null && (dt == DataType.None || dt == DataType.DateTime))
+                    if (!e.User && e.Value != null && (dt == DataType.None || dt == DataType.DateTime || dt == DataType.String))
                     {
-                        SetDataType(2, GXCommon.GetDLMSDataType(e.Value.GetType()));
+                        DataType dt2 = GXCommon.GetDLMSDataType(e.Value.GetType());
+                        if (dt != dt2)
+                        {
+                            SetDataType(2, dt2);
+                        }
                     }
                     dt = GetUIDataType(2);
                     if (dt == DataType.DateTime && (e.Value is UInt32 || e.Value is UInt64 || e.Value is Int32 || e.Value is Int64))

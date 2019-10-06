@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -56,13 +56,15 @@ namespace Gurux.DLMS.Internal
         AssociationResult = 0xA2,
         ResultSourceDiagnostic = 0xA3,
         ACSEServiceUser = 0xA301,
+        ACSEServiceProvider = 0xA302,
         CallingAPTitle = 0xA6,
         RespondingAPTitle = 0xA4,
         DedicatedKey = 0xA8,
         CallingAeInvocationId = 0xA9,
         CalledAeInvocationId = 0xA5,
-        RespondingAeInvocationId = 0xA7,
+        CallingAeQualifier = 0xA7,
         CharString = 0xAA,
-        UserInformation = 0xAB
+        UserInformation = 0xAB,
+        RespondingAeInvocationId = 0xAD
     }
 }

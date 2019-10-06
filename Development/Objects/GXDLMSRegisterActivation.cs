@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -42,7 +42,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSRegisterActivation
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSRegisterActivation
     /// </summary>
     public class GXDLMSRegisterActivation : GXDLMSObject, IGXDLMSBase
     {
@@ -303,7 +303,7 @@ namespace Gurux.DLMS.Objects
                 List<GXDLMSObjectDefinition> items = new List<GXDLMSObjectDefinition>();
                 if (e.Value != null)
                 {
-                    foreach (Object[] it in (Object[])e.Value)
+                    foreach (List<object> it in (List<object>)e.Value)
                     {
                         GXDLMSObjectDefinition item = new GXDLMSObjectDefinition();
                         item.ObjectType = (ObjectType)Convert.ToInt32(it[0]);
@@ -318,10 +318,10 @@ namespace Gurux.DLMS.Objects
                 MaskList.Clear();
                 if (e.Value != null)
                 {
-                    foreach (Object[] it in (Object[])e.Value)
+                    foreach (List<object> it in (List<object>)e.Value)
                     {
                         List<byte> index_list = new List<byte>();
-                        foreach (byte b in (Object[])it[1])
+                        foreach (byte b in (List<object>)it[1])
                         {
                             index_list.Add(b);
                         }

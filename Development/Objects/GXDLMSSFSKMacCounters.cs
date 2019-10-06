@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -42,7 +42,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSSFSKMacCounters
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSSFSKMacCounters
     /// </summary>
     public class GXDLMSSFSKMacCounters : GXDLMSObject, IGXDLMSBase
     {
@@ -349,16 +349,15 @@ namespace Gurux.DLMS.Objects
                 SynchronizationRegister.Clear();
                 if (e.Value != null)
                 {
-                    foreach (object it in (object[])e.Value)
+                    foreach (List<object> it in (List<object>)e.Value)
                     {
-                        object[] tmp = (object[])it;
-                        SynchronizationRegister.Add(new KeyValuePair<UInt16, UInt32>((UInt16)tmp[0], (UInt32)tmp[1]));
+                        SynchronizationRegister.Add(new KeyValuePair<UInt16, UInt32>((UInt16)it[0], (UInt32)it[1]));
                     }
                 }
             }
             else if (e.Index == 3)
             {
-                object[] tmp = (object[])e.Value;
+                List<object> tmp = (List<object>)e.Value;
                 PhysicalLayerDesynchronization = (UInt32)tmp[0];
                 TimeOutNotAddressedDesynchronization = (UInt32)tmp[1];
                 TimeOutFrameNotOkDesynchronization = (UInt32)tmp[2];
@@ -370,10 +369,9 @@ namespace Gurux.DLMS.Objects
                 BroadcastFramesCounter.Clear();
                 if (e.Value != null)
                 {
-                    foreach (object it in (object[])e.Value)
+                    foreach (List<object> it in (List<object>)e.Value)
                     {
-                        object[] tmp = (object[])it;
-                        BroadcastFramesCounter.Add(new KeyValuePair<UInt16, UInt32>((UInt16)tmp[0], (UInt32)tmp[1]));
+                        BroadcastFramesCounter.Add(new KeyValuePair<UInt16, UInt32>((UInt16)it[0], (UInt32)it[1]));
                     }
                 }
             }

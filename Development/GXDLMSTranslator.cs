@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -260,6 +260,15 @@ namespace Gurux.DLMS
         /// Invocation Counter.
         /// </summary>
         public UInt32 InvocationCounter
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Used standard.
+        /// </summary>
+        public Standard Standard
         {
             get;
             set;
@@ -1042,6 +1051,7 @@ namespace Gurux.DLMS
         {
             GXDLMSSettings settings = new GXDLMSSettings(true);
             GetCiphering(settings);
+            settings.Standard = Standard;
             GXReplyData data = new GXReplyData();
             byte cmd = value.GetUInt8();
             string str;
@@ -1052,6 +1062,11 @@ namespace Gurux.DLMS
                 case (byte)Command.Aarq:
                     value.Position = 0;
                     GXAPDU.ParsePDU(settings, settings.Cipher, value, xml);
+                    //Update new dedicated key.
+                    if (settings.Cipher != null && settings.Cipher.DedicatedKey != null)
+                    {
+                        this.DedicatedKey = settings.Cipher.DedicatedKey;
+                    }
                     break;
                 case (byte)Command.InitiateRequest:
                     value.Position = 0;
@@ -1275,14 +1290,21 @@ namespace Gurux.DLMS
                         {
                             byte[] st;
                             st = settings.Cipher.SystemTitle;
-                            if (st != null)
+                            AesGcmParameter p;
+                            if (cmd == (byte)Command.GeneralDedCiphering && settings.Cipher.DedicatedKey != null)
                             {
-                                AesGcmParameter p = new AesGcmParameter(st, settings.Cipher.BlockCipherKey, settings.Cipher.AuthenticationKey);
-                                GXByteBuffer data2 = new GXByteBuffer(GXDLMSChippering.DecryptAesGcm(p, value));
-                                xml.StartComment("Decrypt data: " + data2.ToString());
-                                PduToXml(xml, data2, omitDeclaration, omitNameSpace, false);
-                                xml.EndComment();
+                                p = new AesGcmParameter(st, settings.Cipher.DedicatedKey, settings.Cipher.AuthenticationKey);
                             }
+                            else
+                            {
+                                p = new AesGcmParameter(st, settings.Cipher.BlockCipherKey, settings.Cipher.AuthenticationKey);
+                            }
+                            p.Xml = xml;
+                            GXByteBuffer data2 = new GXByteBuffer(GXDLMSChippering.DecryptAesGcm(p, value));
+                            len2 = xml.GetXmlLength();
+                            xml.StartComment("Decrypt data: " + data2.ToString());
+                            PduToXml(xml, data2, omitDeclaration, omitNameSpace, false);
+                            xml.EndComment();
                         }
                         catch (Exception)
                         {
@@ -1314,7 +1336,7 @@ namespace Gurux.DLMS
                     len = GXCommon.GetObjectCount(value);
                     tmp = new byte[len];
                     value.Get(tmp);
-                    xml.AppendStartTag((Command) cmd);
+                    xml.AppendStartTag((Command)cmd);
                     xml.AppendLine(TranslatorTags.SystemTitle, null,
                             GXCommon.ToHex(tmp, false, 0, len));
                     len = GXCommon.GetObjectCount(value);
@@ -1585,7 +1607,7 @@ namespace Gurux.DLMS
                     break;
                 case 0xBE00:
                     //NegotiatedQualityOfService
-                    s.settings.QualityOfService = (byte) s.ParseInt(GetValue(node, s));
+                    s.settings.QualityOfService = (byte)s.ParseInt(GetValue(node, s));
                     break;
                 case 0xBE06:
                 case 0xBE01:
@@ -1710,7 +1732,7 @@ namespace Gurux.DLMS
                     break;
                 case 0xBE09:
                     // ProposedQualityOfService
-                    s.settings.QualityOfService = (byte) s.ParseInt(GetValue(node, s));
+                    s.settings.QualityOfService = (byte)s.ParseInt(GetValue(node, s));
                     break;
                 case (int)TranslatorGeneralTags.CharString:
                     // Get PW
@@ -2636,7 +2658,7 @@ namespace Gurux.DLMS
                         s.data.Set(GXCommon.HexToBytes(GetValue(node, s)));
                         break;
                     case (UInt16)TranslatorTags.ContentsDescription:
-                        GetNodeTypes(s, node);
+                        GetNodeTypes(s, node, true);
                         return;
                     case (UInt16)TranslatorTags.ArrayContents:
                         if (s.OutputType == TranslatorOutputType.SimpleXml)
@@ -2677,53 +2699,68 @@ namespace Gurux.DLMS
             }
         }
 
+        private static void AppendValue(GXDLMSXmlSettings s, object dt, GXByteBuffer tmp2, string[] values, ref int pos)
+        {
+            GXByteBuffer tmp = new GXByteBuffer();
+            if (dt is List<object>)
+            {
+                foreach (object dt2 in (List<object>)dt)
+                {
+                    //For some reason there is count here in Italy standard. Add it.
+                    if (s.settings.Standard == Standard.Italy && dt is List<object>)
+                    {
+                        tmp2.SetUInt8((byte)((List<object>)dt).Count);
+                    }
+                    AppendValue(s, dt2, tmp2, values, ref pos);
+                }
+            }
+            else
+            {
+                string it = values[pos];
+                if ((DataType)dt == DataType.OctetString)
+                {
+                    GXCommon.SetData(s.settings, tmp, (DataType)dt, GXCommon.HexToBytes(it));
+                }
+                else
+                {
+                    GXCommon.SetData(s.settings, tmp, (DataType)dt, Convert.ChangeType(it, GXCommon.GetDataType((DataType)dt)));
+                }
+                if (tmp.Size == 1)
+                {
+                    // If value is null.
+                    s.data.SetUInt8(0);
+                }
+                else
+                {
+                    tmp2.Set(tmp.SubArray(1, tmp.Size - 1));
+                }
+                ++pos;
+            }
+        }
+
         private static void GetNodeValues(GXDLMSXmlSettings s, XmlNode node)
         {
-            int cnt = 1;
-            int offset = 2;
-            if (s.data.GetUInt8(2) == (int)DataType.Structure)
-            {
-                cnt = s.data.GetUInt8(3);
-                offset = 4;
-            }
-            DataType[] types = new DataType[cnt];
-            for (int pos = 0; pos != cnt; ++pos)
-            {
-                types[pos] = (DataType)s.data.GetUInt8(offset + pos);
-            }
-            GXByteBuffer tmp = new GXByteBuffer();
+            s.data.Position = 2;
+            GXDataInfo info = new GXDataInfo();
+            List<object> types = (List<object>)GXCommon.GetCompactArray(null, s.data, info, true);
+            object dt;
+            s.data.Position = 0;
             GXByteBuffer tmp2 = new GXByteBuffer();
-            DataType dt;
             foreach (XmlNode str in node.ChildNodes)
             {
-                foreach (String r in str.Value.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                foreach (string r in str.Value.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                 {
                     if (r.Trim() == "")
                     {
                         continue;
                     }
                     int col = 0;
-                    foreach (String it in r.Trim().Split(';'))
+                    int pos = 0;
+                    string[] values = r.Trim().Split(';');
+                    while (pos < values.Length)
                     {
-                        dt = types[col % types.Length];
-                        tmp.Clear();
-                        if (dt == DataType.OctetString)
-                        {
-                            GXCommon.SetData(s.settings, tmp, dt, GXCommon.HexToBytes(it));
-                        }
-                        else
-                        {
-                            GXCommon.SetData(s.settings, tmp, dt, Convert.ChangeType(it, GXCommon.GetDataType(dt)));
-                        }
-                        if (tmp.Size == 1)
-                        {
-                            // If value is null.
-                            s.data.SetUInt8(0);
-                        }
-                        else
-                        {
-                            tmp2.Set(tmp.SubArray(1, tmp.Size - 1));
-                        }
+                        dt = types[col % types.Count];
+                        AppendValue(s, dt, tmp2, values, ref pos);
                         ++col;
                     }
                 }
@@ -2732,10 +2769,10 @@ namespace Gurux.DLMS
             s.data.Set(tmp2);
         }
 
-        private static void GetNodeTypes(GXDLMSXmlSettings s, XmlNode node)
+        private static void GetNodeTypes(GXDLMSXmlSettings s, XmlNode node, bool addCount)
         {
             int len = node.ChildNodes.Count;
-            if (len > 1)
+            if (len > 1 && addCount)
             {
                 s.data.SetUInt8(DataType.Structure);
                 GXCommon.SetObjectCount(len, s.data);
@@ -2759,7 +2796,25 @@ namespace Gurux.DLMS
                     }
                 }
                 int tag = s.tags[str];
-                s.data.SetUInt8((byte)(tag - GXDLMS.DATA_TYPE_OFFSET));
+                byte type = (byte)(tag - GXDLMS.DATA_TYPE_OFFSET);
+                if (type == (byte)DataType.Structure || type == (byte)DataType.Array)
+                {
+                    s.data.SetUInt8(type);
+                    len = node2.ChildNodes.Count;
+                    if (type == (byte)DataType.Array)
+                    {
+                        s.data.SetUInt16((UInt16)len);
+                    }
+                    else
+                    {
+                        GXCommon.SetObjectCount(len, s.data);
+                    }
+                    GetNodeTypes(s, node2, false);
+                }
+                else
+                {
+                    s.data.SetUInt8(type);
+                }
             }
         }
 
@@ -2816,6 +2871,8 @@ namespace Gurux.DLMS
             if (s == null)
             {
                 s = new GXDLMSXmlSettings(OutputType, Hex, ShowStringAsHex, tagsByName);
+                ((GXCiphering)s.settings.Cipher).TestMode = true;
+                s.settings.Standard = Standard;
             }
             ReadAllNodes(doc, s);
             GXByteBuffer bb = new GXByteBuffer();
@@ -3135,11 +3192,15 @@ namespace Gurux.DLMS
                     DataType dt = (DataType)Enum.Parse(typeof(DataType), str);
                     if (dt == DataType.Array)
                     {
-                        values.Add(GetNodes(node.ChildNodes).ToArray());
+                        GXArray arr = new GXArray();
+                        arr.AddRange(GetNodes(node.ChildNodes));
+                        values.Add(arr);
                     }
                     else if (dt == DataType.Structure)
                     {
-                        values.Add(GetNodes(node.ChildNodes).ToArray());
+                        GXStructure strucure = new GXStructure();
+                        strucure.AddRange(GetNodes(node.ChildNodes));
+                        values.Add(strucure);
                     }
                     else if (dt == DataType.OctetString)
                     {

@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -44,7 +44,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSModemConfiguration
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSModemConfiguration
     /// </summary>
     public class GXDLMSModemConfiguration : GXDLMSObject, IGXDLMSBase
     {
@@ -254,12 +254,12 @@ namespace Gurux.DLMS.Objects
                 if (e.Value != null)
                 {
                     List<GXDLMSModemInitialisation> items = new List<GXDLMSModemInitialisation>();
-                    foreach (object[] it in (Object[])e.Value)
+                    foreach (List<object> it in (List<object>)e.Value)
                     {
                         GXDLMSModemInitialisation item = new GXDLMSModemInitialisation();
                         item.Request = ASCIIEncoding.ASCII.GetString((byte[])it[0]);
                         item.Response = ASCIIEncoding.ASCII.GetString((byte[])it[1]);
-                        if (it.Length > 2)
+                        if (it.Count > 2)
                         {
                             item.Delay = Convert.ToUInt16(it[2]);
                         }
@@ -274,7 +274,7 @@ namespace Gurux.DLMS.Objects
                 if (e.Value != null)
                 {
                     List<string> items = new List<string>();
-                    foreach (object it in (Object[])e.Value)
+                    foreach (object it in (List<object>)e.Value)
                     {
                         items.Add(GXDLMSClient.ChangeType((byte[])it, DataType.String, false).ToString().Trim());
                     }

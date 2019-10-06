@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -42,7 +42,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSRegisterMonitor
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSRegisterMonitor
     /// </summary>
     public class GXDLMSRegisterMonitor : GXDLMSObject, IGXDLMSBase
     {
@@ -235,7 +235,7 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 2)
             {
-                Thresholds = (object[])e.Value;
+                Thresholds = ((List<object>)e.Value).ToArray();
             }
             else if (e.Index == 3)
             {
@@ -243,9 +243,9 @@ namespace Gurux.DLMS.Objects
                 {
                     MonitoredValue = new GXDLMSMonitoredValue();
                 }
-                MonitoredValue.ObjectType = (ObjectType)Convert.ToInt32(((object[])e.Value)[0]);
-                MonitoredValue.LogicalName = GXCommon.ToLogicalName(((object[])e.Value)[1]);
-                MonitoredValue.AttributeIndex = Convert.ToInt32(((object[])e.Value)[2]);
+                MonitoredValue.ObjectType = (ObjectType)Convert.ToInt32(((List<object>)e.Value)[0]);
+                MonitoredValue.LogicalName = GXCommon.ToLogicalName(((List<object>)e.Value)[1]);
+                MonitoredValue.AttributeIndex = Convert.ToInt32(((List<object>)e.Value)[2]);
             }
             else if (e.Index == 4)
             {
@@ -253,13 +253,13 @@ namespace Gurux.DLMS.Objects
                 if (e.Value != null)
                 {
                     List<GXDLMSActionSet> items = new List<GXDLMSActionSet>();
-                    foreach (Object[] action_set in (Object[])e.Value)
+                    foreach (List<object> action_set in (List<object>)e.Value)
                     {
                         GXDLMSActionSet set = new GXDLMSActionSet();
-                        set.ActionUp.LogicalName = GXCommon.ToLogicalName(((Object[])action_set[0])[0]);
-                        set.ActionUp.ScriptSelector = Convert.ToUInt16(((Object[])action_set[0])[1]);
-                        set.ActionDown.LogicalName = GXCommon.ToLogicalName(((Object[])action_set[1])[0]);
-                        set.ActionDown.ScriptSelector = Convert.ToUInt16(((Object[])action_set[1])[1]);
+                        set.ActionUp.LogicalName = GXCommon.ToLogicalName(((List<object>)action_set[0])[0]);
+                        set.ActionUp.ScriptSelector = Convert.ToUInt16(((List<object>)action_set[0])[1]);
+                        set.ActionDown.LogicalName = GXCommon.ToLogicalName(((List<object>)action_set[1])[0]);
+                        set.ActionDown.ScriptSelector = Convert.ToUInt16(((List<object>)action_set[1])[1]);
                         items.Add(set);
                     }
                     Actions = items.ToArray();

@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -308,6 +308,20 @@ namespace Gurux.DLMS
             set
             {
                 Settings.ServerAddressSize = value;
+            }
+        }
+
+        /// <summary>
+        ///  Source system title.
+        /// </summary>
+        /// <remarks>
+        /// Meter returns system title when ciphered connection is made or GMAC authentication is used.
+        /// </remarks>
+        public byte[] SourceSystemTitle
+        {
+            get
+            {
+                return Settings.SourceSystemTitle;
             }
         }
 
@@ -770,7 +784,7 @@ namespace Gurux.DLMS
         {
             try
             {
-                IsAuthenticationRequired = GXAPDU.ParsePDU(Settings, Settings.Cipher, reply, null) == SourceDiagnostic.AuthenticationRequired;
+                IsAuthenticationRequired = (SourceDiagnostic)GXAPDU.ParsePDU(Settings, Settings.Cipher, reply, null) == SourceDiagnostic.AuthenticationRequired;
                 if (IsAuthenticationRequired)
                 {
                     System.Diagnostics.Debug.WriteLine("Authentication is required.");
@@ -914,6 +928,11 @@ namespace Gurux.DLMS
             buff.SetUInt8(0x80);
             buff.SetUInt8(01);
             buff.SetUInt8(00);
+            //Increase IC.
+            if (Settings.Cipher != null && Settings.Cipher.IsCiphered())
+            {
+                ++Settings.Cipher.InvocationCounter;
+            }
             GXAPDU.GenerateUserInformation(Settings, Settings.Cipher, null, buff);
             buff.SetUInt8(0, (byte)(buff.Size - 1));
             byte[][] reply;
@@ -1030,9 +1049,9 @@ namespace Gurux.DLMS
                 {
                     break;
                 }
-                object[] objects = (object[])GXCommon.GetData(Settings, buff, info);
+                List<object> objects = (List<object>)GXCommon.GetData(Settings, buff, info);
                 info.Clear();
-                if (objects.Length != 4)
+                if (objects.Count != 4)
                 {
                     throw new GXDLMSException("Invalid structure format.");
                 }
@@ -1075,11 +1094,11 @@ namespace Gurux.DLMS
         {
             obj.ObjectType = objectType;
             // Check access rights...
-            if (accessRights is object[] && ((object[])accessRights).Length == 2)
+            if (accessRights is List<object> && ((List<object>)accessRights).Count == 2)
             {
                 //access_rights: access_right
-                object[] access = (object[])accessRights;
-                foreach (object[] attributeAccess in (object[])access[0])
+                List<object> access = (List<object>)accessRights;
+                foreach (List<object> attributeAccess in (List<object>)access[0])
                 {
                     int id = Convert.ToInt32(attributeAccess[0]);
                     AccessMode mode = (AccessMode)Convert.ToInt32(attributeAccess[1]);
@@ -1089,11 +1108,11 @@ namespace Gurux.DLMS
                         obj.SetAccess(id, mode);
                     }
                 }
-                if (((object[])access[1]).Length != 0)
+                if (((List<object>)access[1]).Count != 0)
                 {
-                    if (((object[])access[1])[0] is object[])
+                    if (((List<object>)access[1])[0] is List<object>)
                     {
-                        foreach (object[] methodAccess in (object[])access[1])
+                        foreach (List<object> methodAccess in (List<object>)access[1])
                         {
                             int id = Convert.ToInt32(methodAccess[0]);
                             int tmp;
@@ -1114,7 +1133,7 @@ namespace Gurux.DLMS
                     }
                     else //All versions from Actaris SL 7000 do not return collection as standard says.
                     {
-                        object[] arr = (object[])access[1];
+                        List<object> arr = (List<object>)access[1];
                         int id = Convert.ToInt32(arr[0]) + 1;
                         int tmp;
                         //If version is 0.
@@ -1207,33 +1226,32 @@ namespace Gurux.DLMS
         /// </summary>
         /// <param name="data">Received data.</param>
         /// <returns>Array of objects and called indexes.</returns>
-        public List<KeyValuePair<GXDLMSObject, int>> ParsePushObjects(object[] data)
+        public List<KeyValuePair<GXDLMSObject, int>> ParsePushObjects(List<object> data)
         {
             List<KeyValuePair<GXDLMSObject, int>> objects = new List<KeyValuePair<GXDLMSObject, int>>();
             if (data != null)
             {
                 GXDLMSConverter c = new GXDLMSConverter(Standard);
-                foreach (object it in (object[])data)
+                foreach (List<object> it in (List<object>)data)
                 {
-                    Object[] tmp = (Object[])it;
-                    int classID = ((UInt16)(tmp[0])) & 0xFFFF;
+                    int classID = ((UInt16)(it[0])) & 0xFFFF;
                     if (classID > 0)
                     {
                         GXDLMSObject comp;
-                        comp = this.Objects.FindByLN((ObjectType)classID, GXCommon.ToLogicalName(tmp[1] as byte[]));
+                        comp = this.Objects.FindByLN((ObjectType)classID, GXCommon.ToLogicalName(it[1] as byte[]));
                         if (comp == null)
                         {
-                            comp = GXDLMSClient.CreateDLMSObject(classID, 0, 0, tmp[1], null);
+                            comp = GXDLMSClient.CreateDLMSObject(classID, 0, 0, it[1], null);
                             c.UpdateOBISCodeInformation(comp);
                         }
                         if ((comp is IGXDLMSBase))
                         {
-                            objects.Add(new KeyValuePair<GXDLMSObject, int>(comp, (sbyte)tmp[2]));
+                            objects.Add(new KeyValuePair<GXDLMSObject, int>(comp, (sbyte)it[2]));
                         }
                         else
                         {
                             System.Diagnostics.Debug.WriteLine(string.Format("Unknown object : {0} {1}",
-                                classID, GXCommon.ToLogicalName((byte[])tmp[1])));
+                                classID, GXCommon.ToLogicalName((byte[])it[1])));
                         }
                     }
                 }
@@ -1263,8 +1281,8 @@ namespace Gurux.DLMS
             while (buff.Position != buff.Size && cnt != objectCnt)
             {
                 info.Clear();
-                object[] objects = (object[])GXCommon.GetData(Settings, buff, info);
-                if (objects.Length != 4)
+                List<object> objects = (List<object>)GXCommon.GetData(Settings, buff, info);
+                if (objects.Count != 4)
                 {
                     throw new GXDLMSException("Invalid structure format.");
                 }
@@ -1304,6 +1322,18 @@ namespace Gurux.DLMS
             object value,
             List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> columns)
         {
+            //Update data type if value is readable.
+            if (value != null)
+            {
+                try
+                {
+                    target.SetDataType(attributeIndex, GXCommon.GetDLMSDataType(value.GetType()));
+                }
+                catch (Exception)
+                {
+                    //It's ok if this fails.
+                }
+            }
             if (value is byte[])
             {
                 DataType type = target.GetUIDataType(attributeIndex);
@@ -1590,7 +1620,7 @@ namespace Gurux.DLMS
         /// <returns></returns>
         public byte[][] Method(object name, ObjectType objectType, int index, Object value, DataType type)
         {
-            if (name == null || index < 1)
+            if (name == null || (index < 1 && Standard != Standard.Italy))
             {
                 throw new ArgumentOutOfRangeException("Invalid parameter");
             }
@@ -2229,6 +2259,17 @@ namespace Gurux.DLMS
             return GXDLMS.ReceiverReady(Settings, type);
         }
 
+        /// <summary>
+        /// Generates an acknowledgment message, with which the server is informed to
+        /// send next packets.
+        /// </summary>
+        /// <param name="reply">Reply data.</param>
+        /// <returns>Acknowledgment message as byte array.</returns>
+        public byte[] ReceiverReady(GXReplyData reply)
+        {
+            return GXDLMS.ReceiverReady(Settings, reply);
+        }
+
         ///<summary>Removes the frame from the packet, and returns DLMS PDU.</summary>
         ///<param name="reply">The received data from the device.</param>
         ///<param name="data">Information from the received data.</param>
@@ -2600,6 +2641,48 @@ namespace Gurux.DLMS
                 throw new Exception("This method can be used only to generate HDLC custom frames");
             }
             return GXDLMS.GetHdlcFrame(Settings, command, data);
+        }
+
+        /// <summary>
+        /// Generates a invalid HDLC frame.
+        /// </summary>
+        /// <param name="command">HDLC command.</param>
+        /// <param name="data">data</param>
+        /// <returns>HDLC frame request, as byte array.</returns>
+        /// <remarks>
+        /// This method can be used for sending custom HDLC frames example in testing.
+        /// </remarks>
+        public byte[][] CustomFrameRequest(Command command, GXByteBuffer data)
+        {
+            if (Settings.InterfaceType == InterfaceType.HDLC ||
+                Settings.InterfaceType == InterfaceType.WRAPPER)
+            {
+                byte[][] reply;
+                if (command == Command.None)
+                {
+                    List<byte[]> messages = new List<byte[]>();
+                    if (Settings.InterfaceType == Enums.InterfaceType.WRAPPER)
+                    {
+                        messages.Add(GXDLMS.GetWrapperFrame(Settings, data));
+                    }
+                    else if (Settings.InterfaceType == Enums.InterfaceType.HDLC)
+                    {
+                        messages.Add(GXDLMS.GetHdlcFrame(Settings, (byte)command, data));
+                    }
+                    reply = messages.ToArray();
+                }
+                else if (UseLogicalNameReferencing)
+                {
+                    GXDLMSLNParameters p = new GXDLMSLNParameters(this, Settings, 0, command, 0, data, null, 0xff, Command.None);
+                    reply = GXDLMS.GetLnMessages(p);
+                }
+                else
+                {
+                    reply = GXDLMS.GetSnMessages(new GXDLMSSNParameters(Settings, command, 0, 0, null, data));
+                }
+                return reply;
+            }
+            throw new Exception("This method can be used only to generate HDLC or WRAPPER custom frames");
         }
 
         /// <summary>

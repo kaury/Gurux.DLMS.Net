@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -42,7 +42,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSLimiter
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSLimiter
     /// </summary>
     public class GXDLMSLimiter : GXDLMSObject, IGXDLMSBase
     {
@@ -356,13 +356,13 @@ namespace Gurux.DLMS.Objects
                 data.SetUInt8(3);
                 if (MonitoredValue == null)
                 {
-                    GXCommon.SetData(settings, data, DataType.Int16, 0);
+                    GXCommon.SetData(settings, data, DataType.UInt16, 0);
                     GXCommon.SetData(settings, data, DataType.OctetString, GXCommon.LogicalNameToBytes(null));
                     GXCommon.SetData(settings, data, DataType.Int8, 0);
                 }
                 else
                 {
-                    GXCommon.SetData(settings, data, DataType.Int16, MonitoredValue.ObjectType);
+                    GXCommon.SetData(settings, data, DataType.UInt16, MonitoredValue.ObjectType);
                     GXCommon.SetData(settings, data, DataType.OctetString, GXCommon.LogicalNameToBytes(MonitoredValue.LogicalName));
                     GXCommon.SetData(settings, data, DataType.Int8, MonitoredAttributeIndex);
 
@@ -449,11 +449,28 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 2)
             {
-                ObjectType ot = (ObjectType)Convert.ToInt16(((object[])e.Value)[0]);
-                string ln = GXCommon.ToLogicalName(((object[])e.Value)[1]);
-                int attIndex = Convert.ToInt32(((object[])e.Value)[2]);
+                List<object> tmp = (List<object>)e.Value;
+                ObjectType ot = (ObjectType)Convert.ToInt16(tmp[0]);
+                string ln = GXCommon.ToLogicalName(tmp[1]);
+                int attIndex = Convert.ToInt32(tmp[2]);
                 MonitoredValue = settings.Objects.FindByLN(ot, ln);
                 MonitoredAttributeIndex = attIndex;
+                if (MonitoredValue != null && attIndex != 0)
+                {
+                    try
+                    {
+                        DataType dt = MonitoredValue.GetDataType(attIndex);
+                        SetDataType(3, dt);
+                        SetDataType(4, dt);
+                        SetDataType(5, dt);
+                        SetDataType(6, dt);
+                        SetDataType(7, dt);
+                    }
+                    catch (Exception)
+                    {
+                        //It's OK if this fails.
+                    }
+                }
             }
             else if (e.Index == 3)
             {
@@ -477,7 +494,7 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 8)
             {
-                object[] tmp = (object[])e.Value;
+                List<object> tmp = (List<object>)e.Value;
                 EmergencyProfile.ID = (UInt16)tmp[0];
                 EmergencyProfile.ActivationTime = (GXDateTime)GXDLMSClient.ChangeType((byte[])tmp[1], DataType.DateTime, settings.UseUtc2NormalTime);
                 EmergencyProfile.Duration = (UInt32)tmp[2];
@@ -487,7 +504,7 @@ namespace Gurux.DLMS.Objects
                 List<UInt16> list = new List<UInt16>();
                 if (e.Value != null)
                 {
-                    foreach (object it in (object[])e.Value)
+                    foreach (object it in (List<object>)e.Value)
                     {
                         list.Add(Convert.ToUInt16(it));
                     }
@@ -500,9 +517,9 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 11)
             {
-                object[] tmp = (object[])e.Value;
-                object[] tmp1 = (object[])tmp[0];
-                object[] tmp2 = (object[])tmp[1];
+                List<object> tmp = (List<object>)e.Value;
+                List<object> tmp1 = (List<object>)tmp[0];
+                List<object> tmp2 = (List<object>)tmp[1];
                 ActionOverThreshold.LogicalName = GXCommon.ToLogicalName(tmp1[0]);
                 ActionOverThreshold.ScriptSelector = Convert.ToUInt16(tmp1[1]);
                 ActionUnderThreshold.LogicalName = GXCommon.ToLogicalName((byte[])tmp2[0]);

@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -46,7 +46,7 @@ namespace Gurux.DLMS.Objects
     /// Script table objects contain a table of script entries. Each entry consists of a script identifier
     /// and a series of action specifications.
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSSchedule
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSSchedule
     /// </summary>
     public class GXDLMSScriptTable : GXDLMSObject, IGXDLMSBase
     {
@@ -244,16 +244,16 @@ namespace Gurux.DLMS.Objects
                 Scripts.Clear();
                 //Fix Xemex bug here.
                 //Xemex meters do not return array as they shoul be according standard.
-                if (e.Value is Object[] && ((Object[])e.Value).Length != 0)
+                if (e.Value is List<object> && ((List<object>)e.Value).Count != 0)
                 {
-                    if (((Object[])e.Value)[0] is Object[])
+                    if (((List<object>)e.Value)[0] is List<object>)
                     {
-                        foreach (Object[] item in (Object[])e.Value)
+                        foreach (List<object> item in (List<object>)e.Value)
                         {
                             GXDLMSScript script = new GXDLMSScript();
                             script.Id = Convert.ToInt32(item[0]);
                             Scripts.Add(script);
-                            foreach (Object[] arr in (Object[])item[1])
+                            foreach (List<object> arr in (List<object>)item[1])
                             {
                                 GXDLMSScriptAction it = new GXDLMSScriptAction();
                                 it.Type = (ScriptActionType)Convert.ToInt32(arr[0]);
@@ -281,9 +281,9 @@ namespace Gurux.DLMS.Objects
                     else //Read Xemex meter here.
                     {
                         GXDLMSScript script = new GXDLMSScript();
-                        script.Id = Convert.ToInt32(((Object[])e.Value)[0]);
+                        script.Id = Convert.ToInt32(((List<object>)e.Value)[0]);
                         Scripts.Add(script);
-                        Object[] arr = (Object[])((Object[])e.Value)[1];
+                        List<object> arr = (List<object>)((List<object>)e.Value)[1];
                         GXDLMSScriptAction it = new GXDLMSScriptAction();
                         it.Type = (ScriptActionType)Convert.ToInt32(arr[0]);
                         ObjectType ot = (ObjectType)Convert.ToInt32(arr[1]);

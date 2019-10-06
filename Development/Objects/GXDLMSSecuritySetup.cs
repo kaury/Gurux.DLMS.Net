@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -48,7 +48,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSSecuritySetup
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSSecuritySetup
     /// </summary>
     public class GXDLMSSecuritySetup : GXDLMSObject, IGXDLMSBase
     {
@@ -206,7 +206,7 @@ namespace Gurux.DLMS.Objects
                 throw new ArgumentException("Invalid list. It is empty.");
             }
             GXByteBuffer bb = new GXByteBuffer();
-            bb.SetUInt8(DataType.Array);  
+            bb.SetUInt8(DataType.Array);
             bb.SetUInt8((byte)list.Count);
             byte[] tmp;
             foreach (KeyValuePair<GlobalKeyType, byte[]> it in list)
@@ -267,7 +267,7 @@ namespace Gurux.DLMS.Objects
             return client.Method(this, 5, type, DataType.Enum);
         }
 
-#if !__MOBILE__ && !WINDOWS_UWP && !NETCOREAPP2_0 && !NETCOREAPP2_1
+#if !__MOBILE__ && !WINDOWS_UWP && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETSTANDARD2_0
         /// <summary>
         ///  Imports an X.509 v3 certificate of a public key.
         /// </summary>
@@ -418,9 +418,8 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 2)
             {
-                foreach (object tmp in e.Parameters as object[])
+                foreach (List<object> item in e.Parameters as List<object>)
                 {
-                    object[] item = tmp as object[];
                     GlobalKeyType type = (GlobalKeyType)Convert.ToInt32(item[0]);
                     byte[] data = (byte[])item[1];
                     switch (type)
@@ -627,12 +626,12 @@ namespace Gurux.DLMS.Objects
             return null;
         }
 
-        private void UpdateSertificates(object[] list)
+        private void UpdateSertificates(List<object> list)
         {
             Certificates.Clear();
             if (list != null)
             {
-                foreach (object[] it in list)
+                foreach (List<object> it in list)
                 {
                     GXDLMSCertificateInfo info = new GXDLMSCertificateInfo();
                     info.Entity = (CertificateEntity)Convert.ToInt32(it[0]);
@@ -677,7 +676,7 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 6)
             {
-                UpdateSertificates((object[])e.Value);
+                UpdateSertificates((List<object>)e.Value);
             }
             else
             {

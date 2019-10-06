@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -44,7 +44,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSIp6Setup
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSIp6Setup
     /// </summary>
     public class GXDLMSIp6Setup : GXDLMSObject, IGXDLMSBase
     {
@@ -423,7 +423,7 @@ namespace Gurux.DLMS.Objects
                 List<IPAddress> data = new List<IPAddress>();
                 if (e.Value != null)
                 {
-                    foreach (object it in (Object[])e.Value)
+                    foreach (object it in (List<object>)e.Value)
                     {
                         data.Add(new IPAddress((byte[])it));
                     }
@@ -435,7 +435,7 @@ namespace Gurux.DLMS.Objects
                 List<IPAddress> data = new List<IPAddress>();
                 if (e.Value != null)
                 {
-                    foreach (object it in (Object[])e.Value)
+                    foreach (object it in (List<object>)e.Value)
                     {
                         data.Add(new IPAddress((byte[])it));
                     }
@@ -447,7 +447,7 @@ namespace Gurux.DLMS.Objects
                 List<IPAddress> data = new List<IPAddress>();
                 if (e.Value != null)
                 {
-                    foreach (object it in (Object[])e.Value)
+                    foreach (object it in (List<object>)e.Value)
                     {
                         data.Add(new IPAddress((byte[])it));
                     }
@@ -485,13 +485,12 @@ namespace Gurux.DLMS.Objects
                 List<GXNeighborDiscoverySetup> data = new List<GXNeighborDiscoverySetup>();
                 if (e.Value != null)
                 {
-                    foreach (object it in (Object[])e.Value)
+                    foreach (List<object> it in (List<object>)e.Value)
                     {
-                        object[] tmp = (object[])it;
                         GXNeighborDiscoverySetup v = new GXNeighborDiscoverySetup();
-                        v.MaxRetry = Convert.ToByte(tmp[0]);
-                        v.RetryWaitTime = Convert.ToUInt16(tmp[1]);
-                        v.SendPeriod = Convert.ToUInt32(tmp[2]);
+                        v.MaxRetry = Convert.ToByte(it[0]);
+                        v.RetryWaitTime = Convert.ToUInt16(it[1]);
+                        v.SendPeriod = Convert.ToUInt32(it[2]);
                         data.Add(v);
                     }
                 }

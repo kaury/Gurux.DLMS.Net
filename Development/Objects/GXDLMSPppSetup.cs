@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -44,7 +44,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSPppSetup
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSPppSetup
     /// </summary>
     public class GXDLMSPppSetup : GXDLMSObject, IGXDLMSBase
     {
@@ -131,16 +131,20 @@ namespace Gurux.DLMS.Objects
         /// <inheritdoc cref="GXDLMSObject.GetValues"/>
         public override object[] GetValues()
         {
-            string str = "";
+            StringBuilder sb = new StringBuilder();
             if (UserName != null)
             {
-                str = ASCIIEncoding.ASCII.GetString(UserName);
+                sb.Append(ASCIIEncoding.ASCII.GetString(UserName));
             }
             if (Password != null)
             {
-                str += " " + ASCIIEncoding.ASCII.GetString(Password);
+                if (sb.Length != 0)
+                {
+                    sb.Append(" ");
+                }
+                sb.Append(ASCIIEncoding.ASCII.GetString(Password));
             }
-            return new object[] { LogicalName, PHYReference, LCPOptions, IPCPOptions, str };
+            return new object[] { LogicalName, PHYReference, LCPOptions, IPCPOptions, sb.ToString() };
         }
 
         #region IGXDLMSBase Members
@@ -222,6 +226,10 @@ namespace Gurux.DLMS.Objects
             }
             if (index == 5)
             {
+                if (UserName == null || UserName.Length == 0)
+                {
+                    return DataType.None;
+                }
                 return DataType.Structure;
             }
             throw new ArgumentException("GetDataType failed. Invalid attribute index.");
@@ -283,6 +291,10 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 5)
             {
+                if (UserName == null || UserName.Length == 0)
+                {
+                    return null;
+                }
                 GXByteBuffer data = new GXByteBuffer();
                 data.SetUInt8((byte)DataType.Structure);
                 data.SetUInt8(2);
@@ -307,9 +319,9 @@ namespace Gurux.DLMS.Objects
             else if (e.Index == 3)
             {
                 List<GXDLMSPppSetupLcpOption> items = new List<GXDLMSPppSetupLcpOption>();
-                if (e.Value is Object[])
+                if (e.Value is List<object>)
                 {
-                    foreach (Object[] item in (Object[])e.Value)
+                    foreach (List<object> item in (List<object>)e.Value)
                     {
                         GXDLMSPppSetupLcpOption it = new GXDLMSPppSetupLcpOption();
                         it.Type = (PppSetupLcpOptionType)Convert.ToByte(item[0]);
@@ -323,9 +335,9 @@ namespace Gurux.DLMS.Objects
             else if (e.Index == 4)
             {
                 List<GXDLMSPppSetupIPCPOption> items = new List<GXDLMSPppSetupIPCPOption>();
-                if (e.Value is Object[])
+                if (e.Value is List<object>)
                 {
-                    foreach (Object[] item in (Object[])e.Value)
+                    foreach (List<object> item in (List<object>)e.Value)
                     {
                         GXDLMSPppSetupIPCPOption it = new GXDLMSPppSetupIPCPOption();
                         it.Type = (PppSetupIPCPOptionType)Convert.ToByte(item[0]);
@@ -338,8 +350,15 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 5)
             {
-                UserName = (byte[])((Object[])e.Value)[0];
-                Password = (byte[])((Object[])e.Value)[1];
+                if (e.Value != null)
+                {
+                    UserName = (byte[])((List<object>)e.Value)[0];
+                    Password = (byte[])((List<object>)e.Value)[1];
+                }
+                else
+                {
+                    UserName = Password = null;
+                }
             }
             else
             {

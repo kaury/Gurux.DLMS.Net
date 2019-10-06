@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -45,7 +45,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSProfileGeneric
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSProfileGeneric
     /// </summary>
     public class GXDLMSProfileGeneric : GXDLMSObject, IGXDLMSBase
     {
@@ -467,8 +467,8 @@ namespace Gurux.DLMS.Objects
             UInt16 columnStart = 1, columnEnd = 0;
             if (e.Selector == 2)
             {
-                columnStart = (UInt16)((object[])e.Parameters)[2];
-                columnEnd = (UInt16)((object[])e.Parameters)[3];
+                columnStart = (UInt16)((List<object>)e.Parameters)[2];
+                columnEnd = (UInt16)((List<object>)e.Parameters)[3];
             }
 
             if (columnStart > 1 || columnEnd != 0)
@@ -553,18 +553,18 @@ namespace Gurux.DLMS.Objects
             }
             else if (selector == 1)
             {
-                return GetColumns((Object[])((Object[])parameters)[3]);
+                return GetColumns((List<object>)((List<object>)parameters)[3]);
             }
             else if (selector == 2)
             {
-                Object[] arr = (Object[])parameters;
+                List<object> arr = (List<object>)parameters;
                 int colStart = 1;
                 int colCount = 0;
-                if (arr.Length > 2)
+                if (arr.Count > 2)
                 {
                     colStart = Convert.ToInt32(arr[2]);
                 }
-                if (arr.Length > 3)
+                if (arr.Count > 3)
                 {
                     colCount = Convert.ToInt32(arr[3]);
                 }
@@ -597,19 +597,18 @@ namespace Gurux.DLMS.Objects
         /// </summary>
         /// <param name="cols">Selected columns.</param>
         /// <returns>Selected columns.</returns>
-        private List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> GetColumns(object[] cols)
+        private List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> GetColumns(List<object> cols)
         {
             List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> columns = null;
-            if (cols != null && cols.Length != 0)
+            if (cols != null && cols.Count != 0)
             {
                 columns = new List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>>();
-                foreach (object it in cols)
+                foreach (List<object> it in cols)
                 {
-                    Object[] tmp = (Object[])it;
-                    ObjectType ot = (ObjectType)Convert.ToInt32(tmp[0]);
-                    String ln = GXCommon.ToLogicalName((byte[])tmp[1]);
-                    short attributeIndex = Convert.ToInt16(tmp[2]);
-                    short dataIndex = Convert.ToInt16(tmp[3]);
+                    ObjectType ot = (ObjectType)Convert.ToInt32(it[0]);
+                    String ln = GXCommon.ToLogicalName((byte[])it[1]);
+                    short attributeIndex = Convert.ToInt16(it[2]);
+                    short dataIndex = Convert.ToInt16(it[3]);
                     // Find columns and update only them.
                     foreach (GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject> c in CaptureObjects)
                     {
@@ -635,7 +634,7 @@ namespace Gurux.DLMS.Objects
             {
                 return GetData(settings, e, Buffer, columns);
             }
-            object[] arr = (object[])e.Parameters;
+            List<object> arr = (List<object>)e.Parameters;
             List<object[]> table = new List<object[]>();
             lock (Buffer)
             {
@@ -647,9 +646,9 @@ namespace Gurux.DLMS.Objects
                     info.Clear();
                     info.Type = DataType.DateTime;
                     DateTime end = ((GXDateTime)GXCommon.GetData(settings, new GXByteBuffer((byte[])arr[2]), info)).Value.LocalDateTime;
-                    if (arr.Length > 3)
+                    if (arr.Count > 3)
                     {
-                        columns = GetColumns((Object[])((Object[])arr)[3]);
+                        columns = GetColumns((List<object>)arr[3]);
                     }
                     foreach (object[] row in Buffer)
                     {
@@ -679,11 +678,11 @@ namespace Gurux.DLMS.Objects
 
                     int colStart = 1;
                     int colCount = 0;
-                    if (arr.Length > 2)
+                    if (arr.Count > 2)
                     {
                         colStart = Convert.ToUInt16(arr[2]);
                     }
-                    if (arr.Length > 3)
+                    if (arr.Count > 3)
                     {
                         colCount = Convert.ToUInt16(arr[3]);
                     }
@@ -846,19 +845,35 @@ namespace Gurux.DLMS.Objects
             {
                 cols = CaptureObjects;
             }
-            if (e.Value != null && (e.Value as object[]).Length != 0)
+            if (e.Value != null && (e.Value as List<object>).Count != 0)
             {
                 int index2 = 0;
                 DateTime lastDate = DateTime.MinValue;
-                foreach (object[] row in (e.Value as object[]))
+                foreach (List<object> t in (e.Value as List<object>))
                 {
+                    List<object> row = new List<object>();
+                    foreach(object it in t)
+                    {
+                        if (it is GXStructure)
+                        {
+                            row.Add((List<object>) it);
+                        }
+                        else if (it is GXArray)
+                        {
+                            row.AddRange((List<object>)it);
+                        }
+                        else
+                        {
+                            row.Add(it);
+                        }
+                    }
                     if (cols.Count != 0)
                     {
-                        if ((row as object[]).Length != cols.Count)
+                        if (row.Count != cols.Count)
                         {
                             throw new Exception("The number of columns does not match.");
                         }
-                        for (int pos = 0; pos != row.Length; ++pos)
+                        for (int pos = 0; pos != row.Count; ++pos)
                         {
                             if (cols == null)
                             {
@@ -878,7 +893,11 @@ namespace Gurux.DLMS.Objects
                             {
                                 type = DataType.None;
                             }
-                            if (row[pos] is byte[])
+                            if (row[pos] is GXEnum)
+                            {
+                                row[pos] = Convert.ToByte(row[pos]);
+                            }
+                            else if (row[pos] is byte[])
                             {
                                 if (type != DataType.None && row[pos] is byte[])
                                 {
@@ -954,7 +973,7 @@ namespace Gurux.DLMS.Objects
                             }
                         }
                     }
-                    Buffer.Add(row);
+                    Buffer.Add(row.ToArray());
                 }
                 EntriesInUse = Buffer.Count;
             }
@@ -967,19 +986,32 @@ namespace Gurux.DLMS.Objects
         public static List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> GetCaptureObjects(object[] array)
         {
             List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> list = new List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>>();
+            List<object> tmp = new List<object>();
+            tmp.AddRange(array);
+            SetCaptureObjects(null, list, tmp);
+            return list;
+        }
+
+        /// <summary>
+        /// Get capture objects.
+        /// </summary>
+        /// <param name="array">Received data.</param>
+        public static List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> GetCaptureObjects(List<object> array)
+        {
+            List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> list = new List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>>();
             SetCaptureObjects(null, list, array);
             return list;
         }
 
-        private static void SetCaptureObjects(GXDLMSSettings settings, List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> list, object[] array)
+        private static void SetCaptureObjects(GXDLMSSettings settings, List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> list, List<object> array)
         {
             GXDLMSConverter c = null;
             try
             {
                 foreach (object it in array)
                 {
-                    object[] tmp = it as object[];
-                    if (tmp.Length != 4)
+                    List<object> tmp = it as List<object>;
+                    if (tmp.Count != 4)
                     {
                         throw new GXDLMSException("Invalid structure format.");
                     }
@@ -1039,7 +1071,7 @@ namespace Gurux.DLMS.Objects
                 CaptureObjects.Clear();
                 if (e.Value != null)
                 {
-                    SetCaptureObjects(settings, CaptureObjects, e.Value as object[]);
+                    SetCaptureObjects(settings, CaptureObjects, e.Value as List<object>);
                 }
             }
             else if (e.Index == 4)
@@ -1071,10 +1103,10 @@ namespace Gurux.DLMS.Objects
                     Reset();
                 }
 
-                if (e.Value is object[])
+                if (e.Value is List<object>)
                 {
-                    object[] tmp = e.Value as object[];
-                    if (tmp.Length != 4)
+                    List<object> tmp = e.Value as List<object>;
+                    if (tmp.Count != 4)
                     {
                         throw new GXDLMSException("Invalid structure format.");
                     }

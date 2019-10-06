@@ -35,6 +35,7 @@ using Gurux.Common;
 using Gurux.DLMS.Enums;
 using Gurux.DLMS.ManufacturerSettings;
 using Gurux.DLMS.Objects;
+using Gurux.DLMS.Secure;
 using Gurux.Net;
 using Gurux.Serial;
 using System;
@@ -59,14 +60,14 @@ namespace Gurux.DLMS.Reader
         public int RetryCount = 3;
         IGXMedia Media;
         TraceLevel Trace;
-        GXDLMSClient Client;
+        GXDLMSSecureClient Client;
 
         /// <summary>
         /// Constructor.
         /// </summary>
         /// <param name="client">DLMS Client.</param>
         /// <param name="media">Media.</param>
-        public GXDLMSReader(GXDLMSClient client, IGXMedia media, TraceLevel trace)
+        public GXDLMSReader(GXDLMSSecureClient client, IGXMedia media, TraceLevel trace)
         {
             Trace = trace;
             Media = media;
@@ -732,8 +733,8 @@ namespace Gurux.DLMS.Reader
                                 t.DataToXml(notify.Data, out xml);
                                 Console.WriteLine(xml);
                                 notify.Clear();
+                                continue;
                             }
-                            continue;
                         }
                         else if (p.Eop == null)
                         {
@@ -817,7 +818,7 @@ namespace Gurux.DLMS.Reader
                     }
                     else
                     {
-                        data = Client.ReceiverReady(reply.MoreData);
+                        data = Client.ReceiverReady(reply);
                     }
                     ReadDLMSPacket(data, reply);
                     if (Trace > TraceLevel.Info)
@@ -878,14 +879,14 @@ namespace Gurux.DLMS.Reader
             foreach (byte[] it in data)
             {
                 ReadDataBlock(it, reply);
-                if (list.Count != 1 && reply.Value is object[])
+                //Value is null if data is send in multiple frames.
+                if (reply.Value is object[])
                 {
                     values.AddRange((object[])reply.Value);
                 }
-                else if (reply.Value != null)
+                else if (reply.Value is List<object>)
                 {
-                    //Value is null if data is send in multiple frames.
-                    values.Add(reply.Value);
+                    values.AddRange((List<object>)reply.Value);
                 }
                 reply.Clear();
             }
@@ -977,13 +978,19 @@ namespace Gurux.DLMS.Reader
                     GXReplyData reply = new GXReplyData();
                     try
                     {
-                        ReadDataBlock(Client.ReleaseRequest(), reply);
+                        //Release is call only for secured connections.
+                        //All meters are not supporting Release and it's causing problems.
+                        if (Client.InterfaceType == InterfaceType.WRAPPER ||
+                            (Client.InterfaceType == InterfaceType.HDLC && Client.Ciphering.Security != Security.None))
+                        {
+                            ReadDataBlock(Client.ReleaseRequest(), reply);
+                        }
                     }
                     catch (Exception ex)
                     {
                         //All meters don't support Release.
                         Console.WriteLine("Release failed. " + ex.Message);
-                    } 
+                    }
                     reply.Clear();
                     ReadDLMSPacket(Client.DisconnectRequest(), reply);
                     Media.Close();

@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -102,7 +102,7 @@ namespace Gurux.DLMS.Objects
 
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSSFSKPhyMacSetUp
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSSFSKPhyMacSetUp
     /// </summary>
     public class GXDLMSSFSKPhyMacSetUp : GXDLMSObject, IGXDLMSBase
     {
@@ -580,7 +580,7 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 7)
             {
-                object[] tmp = (object[])e.Value;
+                List<object> tmp = (List<object>)e.Value;
                 MarkFrequency = (UInt32)tmp[0];
                 SpaceFrequency = (UInt32)tmp[1];
             }
@@ -593,7 +593,7 @@ namespace Gurux.DLMS.Objects
                 List<ushort> list = new List<ushort>();
                 if (e.Value != null)
                 {
-                    foreach (object it in (object[])e.Value)
+                    foreach (object it in (List<object>)e.Value)
                     {
                         list.Add((ushort)it);
                     }

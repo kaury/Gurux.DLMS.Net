@@ -11,8 +11,8 @@
     <AssemblyName>Gurux.DLMS.Net</AssemblyName>
     <DefaultLanguage>en-US</DefaultLanguage>
     <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
-    <TargetPlatformVersion>10.0.10586.0</TargetPlatformVersion>
-    <TargetPlatformMinVersion>10.0.10240.0</TargetPlatformMinVersion>
+    <TargetPlatformVersion>10.0.17763.0</TargetPlatformVersion>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <MinimumVisualStudioVersion>14</MinimumVisualStudioVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{A5A43C5B-DE2A-4C0C-9213-0A381AF9435A};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -111,7 +111,8 @@
     <Compile Include="..\GXDLMSConfirmedServiceError.cs" />
     <Compile Include="..\ManufacturerSettings\GXAttributeCollection.cs" />
     <Compile Include="..\Objects\Enums\DeviceType.cs" />
-    <Compile Include="..\Internal\ConnectionState.cs" />
+    <Compile Include="..\Enums\ConnectionState.cs" />
+    <Compile Include="..\Enums\ValueFieldType.cs" />
     <Compile Include="..\Enums\DateTimeExtraInfo.cs" />
     <Compile Include="..\Enums\Standard.cs" />
     <Compile Include="..\Objects\Enums\ApplicationContextName.cs" />
@@ -125,6 +126,7 @@
     <Compile Include="..\Objects\Enums\SecurityPolicy0.cs" />
     <Compile Include="..\Objects\GXDLMSCompactData.cs" />
     <Compile Include="..\Objects\GXDLMSWirelessModeQchannel.cs" />
+    <Compile Include="..\Objects\GXDLMSUtilityTables.cs" />
     <Compile Include="..\Objects\GXDLMSBroadcastLogTable.cs" />
     <Compile Include="..\Objects\GXDLMSContextInformationTable.cs" />
     <Compile Include="..\Objects\GXDLMSG3PlcMacLayerCounters.cs" />
@@ -230,6 +232,7 @@
     <Compile Include="..\Enums\Command.cs" />
     <Compile Include="..\Enums\DataType.cs" />
     <Compile Include="..\Enums\ErrorCode.cs" />
+    <Compile Include="..\GXBitString.cs" />
     <Compile Include="..\GXByteBuffer.cs" />
     <Compile Include="..\Secure\GXDLMSSecureNotify.cs" />
     <Compile Include="..\Secure\GXDLMSSecureServer.cs" />
@@ -367,7 +370,6 @@
     <Compile Include="..\ValueEventArgs.cs">
       <ExcludeFromStyleCop>False</ExcludeFromStyleCop>
     </Compile>
-    <Compile Include="..\Properties\AssemblyInfo.cs" />
     <Compile Include="..\Objects\GXDLMSMBusMasterPortSetup.cs" />
     <Compile Include="..\Objects\Italy\Enums\DefaultTariffBand.cs" />
     <Compile Include="..\Objects\Italy\Enums\WeeklyActivation.cs" />
@@ -379,7 +381,8 @@
     <Compile Include="..\Internal\MBusControlInfo.cs" />
     <Compile Include="..\Internal\MBusEncryptionMode.cs" />
     <Compile Include="..\Internal\MBusMeterType.cs" />
-    <EmbeddedResource Include="..\Properties\Gurux.DLMS.Net.UWP.rd.xml" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="Properties\Gurux.DLMS.Net.UWP.rd.xml" />
   </ItemGroup>
   <ItemGroup />
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">

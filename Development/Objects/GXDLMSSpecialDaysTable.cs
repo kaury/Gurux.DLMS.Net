@@ -26,7 +26,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
 //
-// More information of Gurux products: http://www.gurux.org
+// More information of Gurux products: https://www.gurux.org
 //
 // This code is licensed under the GNU General Public License v2.
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
@@ -44,7 +44,7 @@ namespace Gurux.DLMS.Objects
 {
     /// <summary>
     /// Online help:
-    /// http://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSSpecialDaysTable
+    /// https://www.gurux.fi/Gurux.DLMS.Objects.GXDLMSSpecialDaysTable
     /// </summary>
     public class GXDLMSSpecialDaysTable : GXDLMSObject, IGXDLMSBase
     {
@@ -232,7 +232,7 @@ namespace Gurux.DLMS.Objects
                 if (e.Value != null)
                 {
                     List<GXDLMSSpecialDay> items = new List<GXDLMSSpecialDay>();
-                    foreach (Object[] item in (Object[])e.Value)
+                    foreach (List<object> item in (List<object>)e.Value)
                     {
                         GXDLMSSpecialDay it = new GXDLMSSpecialDay();
                         it.Index = Convert.ToUInt16(item[0]);
@@ -276,7 +276,7 @@ namespace Gurux.DLMS.Objects
                 }
                 if (e.Index == 1)
                 {
-                    Object[] item = (Object[])e.Parameters;
+                    List<object> item = (List<object>)e.Parameters;
                     GXDLMSSpecialDay it = new GXDLMSSpecialDay();
                     it.Index = Convert.ToUInt16(item[0]);
                     it.Date = (GXDate)GXDLMSClient.ChangeType((byte[])item[1], DataType.Date, settings.UseUtc2NormalTime);
