@@ -911,6 +911,30 @@ namespace Gurux.DLMS
         }
 
         /// <summary>
+        /// The version can be used for backward compatibility.
+        /// </summary>
+        public int Version
+        {
+            get
+            {
+                return Settings.Version;
+            }
+            set
+            {
+                Settings.Version = value;
+            }
+        }
+
+        /// <summary>
+        /// If protected release is used release is including a ciphered xDLMS Initiate request.
+        /// </summary>
+        public bool UseProtectedRelease
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
         /// Generates a release request.
         /// </summary>
         /// <returns>Release request, as byte array.</returns>
@@ -923,18 +947,28 @@ namespace Gurux.DLMS
                 return null;
             }
             GXByteBuffer buff = new GXByteBuffer();
-            //Length.
-            buff.SetUInt8(0);
-            buff.SetUInt8(0x80);
-            buff.SetUInt8(01);
-            buff.SetUInt8(00);
-            //Increase IC.
-            if (Settings.Cipher != null && Settings.Cipher.IsCiphered())
+            if (!UseProtectedRelease)
             {
-                ++Settings.Cipher.InvocationCounter;
+                buff.SetUInt8(3);
+                buff.SetUInt8(0x80);
+                buff.SetUInt8(1);
+                buff.SetUInt8(0);
             }
-            GXAPDU.GenerateUserInformation(Settings, Settings.Cipher, null, buff);
-            buff.SetUInt8(0, (byte)(buff.Size - 1));
+            else
+            {
+                //Length.
+                buff.SetUInt8(0);
+                buff.SetUInt8(0x80);
+                buff.SetUInt8(01);
+                buff.SetUInt8(00);
+                //Increase IC.
+                if (Settings.Cipher != null && Settings.Cipher.IsCiphered())
+                {
+                    ++Settings.Cipher.InvocationCounter;
+                }
+                GXAPDU.GenerateUserInformation(Settings, Settings.Cipher, null, buff);
+                buff.SetUInt8(0, (byte)(buff.Size - 1));
+            }
             byte[][] reply;
             if (UseLogicalNameReferencing)
             {
@@ -968,19 +1002,16 @@ namespace Gurux.DLMS
                 return null;
             }
             byte[] ret = null;
-            //Reset to max PDU size when connection is closed.
-            Settings.MaxPduSize = 0xFFFF;
             if (Settings.InterfaceType == InterfaceType.HDLC)
             {
                 ret = GXDLMS.GetHdlcFrame(Settings, (byte)Command.DisconnectRequest, null);
             }
             else if (force || Settings.Connected == ConnectionState.Dlms)
             {
-                GXByteBuffer bb = new GXByteBuffer(2);
-                bb.SetUInt8((byte)Command.ReleaseRequest);
-                bb.SetUInt8(0x0);
-                ret = GXDLMS.GetWrapperFrame(Settings, bb);
+                ret = ReleaseRequest()[0];
             }
+            //Reset to max PDU size when connection is closed.
+            Settings.MaxPduSize = 0xFFFF;
             Settings.Connected = ConnectionState.None;
             Settings.ResetFrameSequence();
             return ret;
@@ -1049,7 +1080,16 @@ namespace Gurux.DLMS
                 {
                     break;
                 }
-                List<object> objects = (List<object>)GXCommon.GetData(Settings, buff, info);
+                object tmp = GXCommon.GetData(Settings, buff, info);
+                List<object> objects;
+                if (tmp is List<object>)
+                {
+                    objects = (List<object>)tmp;
+                }
+                else
+                {
+                    objects = new List<object>((object[])tmp);
+                }
                 info.Clear();
                 if (objects.Count != 4)
                 {
@@ -1232,8 +1272,17 @@ namespace Gurux.DLMS
             if (data != null)
             {
                 GXDLMSConverter c = new GXDLMSConverter(Standard);
-                foreach (List<object> it in (List<object>)data)
+                foreach (object tmp in data)
                 {
+                    List<object> it;
+                    if (tmp is List<object>)
+                    {
+                        it = (List<object>) tmp;
+                    }
+                    else
+                    {
+                        it = new List<object>((object[])tmp);
+                    }
                     int classID = ((UInt16)(it[0])) & 0xFFFF;
                     if (classID > 0)
                     {
@@ -1281,7 +1330,16 @@ namespace Gurux.DLMS
             while (buff.Position != buff.Size && cnt != objectCnt)
             {
                 info.Clear();
-                List<object> objects = (List<object>)GXCommon.GetData(Settings, buff, info);
+                object tmp = GXCommon.GetData(Settings, buff, info);
+                List<object> objects;
+                if (tmp is List<object>)
+                {
+                    objects = (List<object>)tmp;
+                }
+                else
+                {
+                    objects = new List<object>((object[])tmp);
+                }
                 if (objects.Count != 4)
                 {
                     throw new GXDLMSException("Invalid structure format.");

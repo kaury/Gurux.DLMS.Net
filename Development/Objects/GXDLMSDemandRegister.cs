@@ -277,7 +277,7 @@ namespace Gurux.DLMS.Objects
 
         public override DataType GetUIDataType(int index)
         {
-            if (index == 6)
+            if (index == 6 || index == 7)
             {
                 return DataType.DateTime;
             }
@@ -473,7 +473,15 @@ namespace Gurux.DLMS.Objects
                 }
                 else
                 {
-                    List<object> arr = (List<object>)e.Value;
+                    List<object> arr;
+                    if (e.Value is List<object>)
+                    {
+                        arr = (List<object>)e.Value;
+                    }
+                    else
+                    {
+                        arr = new List<object>((object[])e.Value);
+                    }
                     if (arr.Count != 2)
                     {
                         throw new Exception("setValue failed. Invalid scaler unit value.");
