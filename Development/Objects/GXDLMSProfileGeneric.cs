@@ -219,7 +219,7 @@ namespace Gurux.DLMS.Objects
         /// Entries (rows) in Use.
         /// </summary>
         [XmlIgnore()]
-        public int EntriesInUse
+        public UInt32 EntriesInUse
         {
             get;
             set;
@@ -929,10 +929,10 @@ namespace Gurux.DLMS.Objects
             {
                 int index2 = 0;
                 DateTime lastDate = DateTime.MinValue;
-                foreach (object tmp in (IEnumerable<object>) e.Value)
+                foreach (object tmp in (IEnumerable<object>)e.Value)
                 {
                     List<object> row = new List<object>();
-                    row.AddRange((IEnumerable<object>) tmp);
+                    row.AddRange((IEnumerable<object>)tmp);
                     if (cols.Count != 0)
                     {
                         if (row.Count != cols.Count)
@@ -1041,7 +1041,10 @@ namespace Gurux.DLMS.Objects
                     }
                     Buffer.Add(row.ToArray());
                 }
-                EntriesInUse = Buffer.Count;
+                if (settings.IsServer)
+                {
+                    EntriesInUse = (UInt32)Buffer.Count;
+                }
             }
         }
 
@@ -1110,7 +1113,7 @@ namespace Gurux.DLMS.Objects
                         obj = GXDLMSClient.CreateDLMSObject((int)type, null, 0, ln, 0);
                         if (c == null)
                         {
-                            c = new GXDLMSConverter();
+                            c = new GXDLMSConverter(settings == null ? Standard.DLMS : settings.Standard);
                         }
                         c.UpdateOBISCodeInformation(obj);
                     }
@@ -1135,7 +1138,10 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 3)
             {
-                Reset();
+                if (settings != null && settings.IsServer)
+                {
+                    Reset();
+                }
                 //Clear file
                 if (e.Server != null)
                 {
@@ -1194,22 +1200,31 @@ namespace Gurux.DLMS.Objects
                         throw new GXDLMSException("Invalid structure format.");
                     }
                     ObjectType type = (ObjectType)Convert.ToInt16(tmp[0]);
-                    string ln = GXCommon.ToLogicalName((byte[])tmp[1]);
-                    SortAttributeIndex = Convert.ToInt16(tmp[2]);
-                    SortDataIndex = Convert.ToInt16(tmp[3]);
-                    SortObject = null;
-                    foreach (var it in CaptureObjects)
+                    if (type != ObjectType.None)
                     {
-                        if (it.Key.ObjectType == type && it.Key.LogicalName == ln)
+                        string ln = GXCommon.ToLogicalName((byte[])tmp[1]);
+                        SortAttributeIndex = Convert.ToInt16(tmp[2]);
+                        SortDataIndex = Convert.ToInt16(tmp[3]);
+                        SortObject = null;
+                        foreach (var it in CaptureObjects)
                         {
-                            SortObject = it.Key;
-                            break;
+                            if (it.Key.ObjectType == type && it.Key.LogicalName == ln)
+                            {
+                                SortObject = it.Key;
+                                break;
+                            }
+                        }
+                        if (SortObject == null)
+                        {
+                            SortObject = GXDLMSClient.CreateObject(type);
+                            SortObject.LogicalName = ln;
                         }
                     }
-                    if (SortObject == null)
+                    else
                     {
-                        SortObject = GXDLMSClient.CreateObject(type);
-                        SortObject.LogicalName = ln;
+                        SortObject = null;
+                        SortAttributeIndex = 0;
+                        SortDataIndex = 0;
                     }
                 }
                 else
@@ -1219,7 +1234,7 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 7)
             {
-                EntriesInUse = Convert.ToInt32(e.Value);
+                EntriesInUse = Convert.ToUInt32(e.Value);
             }
             else if (e.Index == 8)
             {
@@ -1247,7 +1262,7 @@ namespace Gurux.DLMS.Objects
                     List<object> row = new List<object>();
                     while (reader.IsStartElement("Cell", false))
                     {
-                        row.Add(reader.ReadElementContentAsObject("Cell", null));
+                        row.Add(reader.ReadElementContentAsObject("Cell", null, null, 0));
                     }
                     Buffer.Add(row.ToArray());
                 }
@@ -1283,7 +1298,7 @@ namespace Gurux.DLMS.Objects
                 SortObject = reader.Objects.FindByLN(ot, ln);
                 reader.ReadEndElement("SortObject");
             }
-            EntriesInUse = reader.ReadElementContentAsInt("EntriesInUse");
+            EntriesInUse = (UInt32)reader.ReadElementContentAsInt("EntriesInUse");
             ProfileEntries = (UInt32)reader.ReadElementContentAsLong("ProfileEntries");
         }
 
@@ -1319,16 +1334,16 @@ namespace Gurux.DLMS.Objects
                                 else if (lastdt != null)
                                 {
                                     lastdt = new GXDateTime(lastdt.Value.AddMinutes(add));
-                                    writer.WriteElementObject("Cell", lastdt, false);
+                                    writer.WriteElementObject("Cell", lastdt);
                                     continue;
                                 }
                                 else
                                 {
-                                    writer.WriteElementObject("Cell", DateTime.MinValue, false);
+                                    writer.WriteElementObject("Cell", DateTime.MinValue);
                                 }
                             }
                         }
-                        writer.WriteElementObject("Cell", it, false);
+                        writer.WriteElementObject("Cell", it);
                     }
                     writer.WriteEndElement();
                 }

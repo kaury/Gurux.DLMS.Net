@@ -199,6 +199,17 @@ namespace Gurux.DLMS.Secure
                             p.Xml.AppendComment(GXCommon.SystemTitleToString(Standard.DLMS, p.SystemTitle));
                         }
                     }
+                    if (p.SystemTitle == null || p.SystemTitle.Length != 8)
+                    {
+                        if (p.Xml == null)
+                        {
+                            throw new ArgumentNullException("Invalid sender system title.");
+                        }
+                        else
+                        {
+                            p.Xml.AppendComment("Invalid sender system title.");
+                        }
+                    }
                     break;
                 case Command.GeneralCiphering:
                 case Command.GloInitiateRequest:
@@ -213,7 +224,7 @@ namespace Gurux.DLMS.Secure
                 case Command.GloSetResponse:
                 case Command.GloMethodRequest:
                 case Command.GloMethodResponse:
-                case Command.GloEventNotificationRequest:
+                case Command.GloEventNotification:
                 case Command.DedInitiateRequest:
                 case Command.DedInitiateResponse:
                 case Command.DedGetRequest:
@@ -222,7 +233,7 @@ namespace Gurux.DLMS.Secure
                 case Command.DedSetResponse:
                 case Command.DedMethodRequest:
                 case Command.DedMethodResponse:
-                case Command.DedEventNotificationRequest:
+                case Command.DedEventNotification:
                 case Command.DedReadRequest:
                 case Command.DedReadResponse:
                 case Command.DedWriteRequest:
@@ -241,9 +252,23 @@ namespace Gurux.DLMS.Secure
                 GXByteBuffer t = new GXByteBuffer(tmp);
                 transactionId = t.GetUInt64();
                 len = GXCommon.GetObjectCount(data);
-                tmp = new byte[len];
-                data.Get(tmp);
-                p.SystemTitle = tmp;
+                if (len != 0)
+                {
+                    tmp = new byte[len];
+                    data.Get(tmp);
+                    p.SystemTitle = tmp;
+                }
+                if (p.SystemTitle == null || p.SystemTitle.Length != 8)
+                {
+                    if (p.Xml == null)
+                    {
+                        throw new ArgumentNullException("Invalid sender system title.");
+                    }
+                    else
+                    {
+                        p.Xml.AppendComment("Invalid sender system title.");
+                    }
+                }
                 len = GXCommon.GetObjectCount(data);
                 tmp = new byte[len];
                 data.Get(tmp);

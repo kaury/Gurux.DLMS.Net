@@ -32,27 +32,33 @@
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
 
-namespace Gurux.DLMS.Objects.Enums
+
+namespace Gurux.DLMS.Internal
 {
-    public enum AutoAnswerMode
+    /// <summary>
+    /// Enumerates Set request types.
+    /// </summary>
+    enum SetCommandType
     {
         /// <summary>
-        /// Line dedicated to the device.
+        /// Normal Get.
         /// </summary>
-        Device = 0,
+        Normal = 1,
         /// <summary>
-        /// Shared line management with a limited number of calls allowed. Once the number of calls is reached,
-        /// the window status becomes inactive until the next start date, whatever the result of the call,
+        /// First data block.
         /// </summary>
-        Call = 1,
+        FirstBlock = 2,
         /// <summary>
-        /// Shared line management with a limited number of successful calls allowed. Once the number of
-        /// successful communications is reached, the window status becomes inactive until the next start date,
+        /// With data block.
         /// </summary>
-        Connected = 2,
+        WIthDataBlock = 3,
         /// <summary>
-        /// Currently no modem connected.
+        /// Set request with list.
         /// </summary>
-        None = 3
+        WithList = 4,
+        /// <summary>
+        /// Set request with list and first data block.
+        /// </summary>
+        FirstBlockWithList = 5
     }
 }

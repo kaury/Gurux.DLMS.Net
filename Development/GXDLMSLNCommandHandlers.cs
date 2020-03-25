@@ -193,7 +193,7 @@ namespace Gurux.DLMS
                     return;
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 if (xml != null)
                 {
@@ -263,7 +263,7 @@ namespace Gurux.DLMS
                               ServiceError.Service, (byte)Service.Unsupported));
                 return;
             }
-
+            ValueEventArgs e = null;
             if (obj == null)
             {
                 obj = server.NotifyFindObject(ci, 0, GXCommon.ToLogicalName(ln));
@@ -275,7 +275,7 @@ namespace Gurux.DLMS
             }
             else
             {
-                ValueEventArgs e = new ValueEventArgs(server, obj, id, 0, parameters);
+                e = new ValueEventArgs(server, obj, id, 0, parameters);
                 e.InvokeId = invokeId;
                 if (server.NotifyGetMethodAccess(e) == MethodAccessMode.NoAccess)
                 {
@@ -283,29 +283,38 @@ namespace Gurux.DLMS
                 }
                 else
                 {
-                    server.NotifyAction(new ValueEventArgs[] { e });
-                    byte[] actionReply;
-                    if (e.Handled)
+                    try
                     {
-                        actionReply = (byte[])e.Value;
+                        server.NotifyAction(new ValueEventArgs[] { e });
+                        byte[] actionReply;
+                        if (e.Handled)
+                        {
+                            actionReply = (byte[])e.Value;
+                        }
+                        else
+                        {
+                            actionReply = (obj as IGXDLMSBase).Invoke(settings, e);
+                            server.NotifyPostAction(new ValueEventArgs[] { e });
+                        }
+                        //Set default action reply if not given.
+                        if (actionReply != null && e.Error == 0)
+                        {
+                            //Add return parameters
+                            bb.SetUInt8(1);
+                            //Add parameters error code.
+                            bb.SetUInt8(0);
+                            GXCommon.SetData(settings, bb, GXDLMSConverter.GetDLMSDataType(actionReply), actionReply);
+                        }
+                        else
+                        {
+                            error = e.Error;
+                            //Add return parameters
+                            bb.SetUInt8(0);
+                        }
                     }
-                    else
+                    catch (Exception)
                     {
-                        actionReply = (obj as IGXDLMSBase).Invoke(settings, e);
-                        server.NotifyPostAction(new ValueEventArgs[] { e });
-                    }
-                    //Set default action reply if not given.
-                    if (actionReply != null && e.Error == 0)
-                    {
-                        //Add return parameters
-                        bb.SetUInt8(1);
-                        //Add parameters error code.
-                        bb.SetUInt8(0);
-                        GXCommon.SetData(settings, bb, GXDLMSConverter.GetDLMSDataType(actionReply), actionReply);
-                    }
-                    else
-                    {
-                        error = e.Error;
+                        error = ErrorCode.ReadWriteDenied;
                         //Add return parameters
                         bb.SetUInt8(0);
                     }
@@ -316,7 +325,7 @@ namespace Gurux.DLMS
             GXDLMSLNParameters p = new GXDLMSLNParameters(null, settings, invokeId, Command.MethodResponse, 1, null, bb, (byte)error, cipheredCommand);
             GXDLMS.GetLNPdu(p, replyData);
             //If High level authentication fails.
-            if (obj is GXDLMSAssociationLogicalName && id == 1)
+            if (error == 0 && obj is GXDLMSAssociationLogicalName && id == 1)
             {
                 if ((obj as GXDLMSAssociationLogicalName).AssociationStatus == Objects.Enums.AssociationStatus.Associated)
                 {
@@ -328,6 +337,11 @@ namespace Gurux.DLMS
                     server.NotifyInvalidConnection(connectionInfo);
                     settings.Connected &= ~ConnectionState.Dlms;
                 }
+            }
+            //Start to use new keys.
+            if (e != null && error == 0 && obj is GXDLMSSecuritySetup && id == 2)
+            {
+                ((GXDLMSSecuritySetup)obj).ApplyKeys(settings, e);
             }
         }
 
@@ -786,7 +800,7 @@ namespace Gurux.DLMS
                 e.InvokeId = p.InvokeId;
                 AccessMode am = server.NotifyGetAttributeAccess(e);
                 // If write is denied.
-                if (am != AccessMode.Write && am != AccessMode.ReadWrite)
+                if ((am & AccessMode.Write) == 0)
                 {
                     //Read Write denied.
                     p.status = (byte)ErrorCode.ReadWriteDenied;
@@ -901,11 +915,12 @@ namespace Gurux.DLMS
             p.multipleBlocks = true;
         }
 
-        private static void HanleSetRequestWithList(GXDLMSSettings settings, byte invokeID, GXDLMSServer server, GXByteBuffer data, GXDLMSLNParameters p, GXByteBuffer replyData, GXDLMSTranslatorStructure xml)
+        private static void HanleSetRequestWithList(GXDLMSSettings settings, byte invokeID, GXDLMSServer server, GXByteBuffer data,
+            GXDLMSLNParameters p, GXByteBuffer replyData, GXDLMSTranslatorStructure xml)
         {
             ValueEventArgs e;
             int cnt = GXCommon.GetObjectCount(data);
-            List<ValueEventArgs> list = new List<ValueEventArgs>();
+            Dictionary<int, byte> status = new Dictionary<int, byte>();
             if (xml != null)
             {
                 xml.AppendStartTag(TranslatorTags.AttributeDescriptorList, "Qty", xml.IntegerToHex(cnt, 2));
@@ -914,6 +929,7 @@ namespace Gurux.DLMS
             {
                 for (int pos = 0; pos != cnt; ++pos)
                 {
+                    status.Add(pos, 0);
                     ObjectType ci = (ObjectType)data.GetUInt16();
                     byte[] ln = new byte[6];
                     data.Get(ln);
@@ -949,24 +965,15 @@ namespace Gurux.DLMS
                         }
                         if (obj == null)
                         {
-                            // "Access Error : Device reports a undefined object."
-                            e = new ValueEventArgs(server, obj, attributeIndex, 0, 0);
-                            e.Error = ErrorCode.UndefinedObject;
-                            list.Add(e);
+                            status[pos] = (byte)ErrorCode.UndefinedObject;
                         }
                         else
                         {
                             ValueEventArgs arg = new ValueEventArgs(server, obj, attributeIndex, selector, parameters);
                             arg.InvokeId = invokeID;
-                            if (server.NotifyGetAttributeAccess(arg) == AccessMode.NoAccess)
+                            if ((server.NotifyGetAttributeAccess(arg) & AccessMode.Write) == 0)
                             {
-                                //Read Write denied.
-                                arg.Error = ErrorCode.ReadWriteDenied;
-                                list.Add(arg);
-                            }
-                            else
-                            {
-                                list.Add(arg);
+                                status[pos] = (byte)ErrorCode.ReadWriteDenied;
                             }
                         }
                     }
@@ -979,25 +986,35 @@ namespace Gurux.DLMS
                 }
                 for (int pos = 0; pos != cnt; ++pos)
                 {
-                    GXDataInfo di = new GXDataInfo();
-                    di.xml = xml;
-                    if (xml != null && xml.OutputType == TranslatorOutputType.StandardXml)
+                    if (xml != null || status[pos] == 0)
                     {
-                        xml.AppendStartTag(Command.WriteRequest, SingleReadResponse.Data);
-                    }
-                    object value = GXCommon.GetData(settings, data, di);
-                    if (!di.Complete)
-                    {
-                        value = GXCommon.ToHex(data.Data, false, data.Position, data.Size - data.Position);
-                    }
-                    else if (value is byte[])
-                    {
-                        value = GXCommon.ToHex((byte[])value, false);
-                    }
-                    if (xml != null && xml
-                            .OutputType == TranslatorOutputType.StandardXml)
-                    {
-                        xml.AppendEndTag(Command.WriteRequest, SingleReadResponse.Data);
+                        GXDataInfo di = new GXDataInfo();
+                        di.xml = xml;
+                        if (xml != null && xml.OutputType == TranslatorOutputType.StandardXml)
+                        {
+                            xml.AppendStartTag(Command.WriteRequest, SingleReadResponse.Data);
+                        }
+                        try
+                        {
+                            object value = GXCommon.GetData(settings, data, di);
+                            if (!di.Complete)
+                            {
+                                value = GXCommon.ToHex(data.Data, false, data.Position, data.Size - data.Position);
+                            }
+                            else if (value is byte[])
+                            {
+                                value = GXCommon.ToHex((byte[])value, false);
+                            }
+                            if (xml != null && xml
+                                    .OutputType == TranslatorOutputType.StandardXml)
+                            {
+                                xml.AppendEndTag(Command.WriteRequest, SingleReadResponse.Data);
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            status[pos] = (byte)ErrorCode.ReadWriteDenied;
+                        }
                     }
                 }
                 if (xml != null)
@@ -1012,6 +1029,14 @@ namespace Gurux.DLMS
                     throw ex;
                 }
             }
+            p.status = 0xFF;
+            p.attributeDescriptor = new GXByteBuffer();
+            GXCommon.SetObjectCount(status.Count, p.attributeDescriptor);
+            foreach (var it in status)
+            {
+                p.attributeDescriptor.SetUInt8(it.Value);
+            }
+            p.requestType = (byte)SetResponseType.WithList;
         }
 
         ///<summary>

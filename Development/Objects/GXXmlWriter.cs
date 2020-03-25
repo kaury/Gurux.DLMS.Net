@@ -34,6 +34,7 @@
 
 using Gurux.DLMS.Enums;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -83,7 +84,7 @@ namespace Gurux.DLMS.Objects
             {
                 Indent = true,
                 IndentChars = "  ",
-                NewLineOnAttributes = true
+                NewLineOnAttributes = false
             };
             if (File.Exists(filename))
             {
@@ -106,9 +107,9 @@ namespace Gurux.DLMS.Objects
             {
                 Indent = true,
                 IndentChars = "  ",
-                NewLineOnAttributes = true
+                NewLineOnAttributes = false
             };
-            writer = XmlWriter.Create(s);
+            writer = XmlWriter.Create(s, settings);
         }
 
         public void WriteStartDocument()
@@ -175,7 +176,7 @@ namespace Gurux.DLMS.Objects
         {
             if (!skipDefaults || value)
             {
-                writer.WriteElementString(name, "1");
+                writer.WriteElementString(name, value ? "1" : "0");
             }
         }
 
@@ -193,26 +194,31 @@ namespace Gurux.DLMS.Objects
 
         void WriteArray(object data)
         {
-            if (data is Array)
+            if (data is List<object>)
             {
-                Array arr = (Array)data;
-                for (int pos = 0; pos != arr.Length; ++pos)
+                foreach (object tmp in (List<object>)data)
                 {
-                    object tmp = arr.GetValue(pos);
                     if (tmp is byte[])
                     {
-                        WriteElementObject("Item", tmp, false);
+                        WriteElementObject("Item", tmp);
                     }
-                    else if (tmp is Array)
+                    else if (tmp is GXArray)
                     {
                         writer.WriteStartElement("Item");
                         writer.WriteAttributeString("Type", ((int)DataType.Array).ToString());
                         WriteArray(tmp);
                         writer.WriteEndElement();
                     }
+                    else if (tmp is GXStructure)
+                    {
+                        writer.WriteStartElement("Item");
+                        writer.WriteAttributeString("Type", ((int)DataType.Structure).ToString());
+                        WriteArray(tmp);
+                        writer.WriteEndElement();
+                    }
                     else if (tmp is Enum)
                     {
-                        WriteElementObject("Item", Convert.ToInt32(tmp), false);
+                        WriteElementObject("Item", Convert.ToInt32(tmp));
                     }
                     else
                     {
@@ -224,31 +230,11 @@ namespace Gurux.DLMS.Objects
 
         public void WriteElementObject(string name, object value)
         {
-            WriteElementObject(name, value, true);
-        }
-
-        public void WriteElementObject(string name, object value, DataType type, DataType uiType)
-        {
-            if (type != DataType.None && value is string)
+            if (value != null || !skipDefaults)
             {
-                if (type == DataType.OctetString)
-                {
-                    if (uiType == DataType.String)
-                    {
-                        value = ASCIIEncoding.ASCII.GetBytes((string)value);
-                    }
-                    else if (uiType == DataType.OctetString)
-                    {
-                        value = GXDLMSTranslator.HexToBytes((string)value);
-                    }
-                }
-                else if (!(value is GXDateTime))
-                {
-                    Type newType = GXDLMSConverter.GetDataType(type);
-                    value = Convert.ChangeType(value, newType);
-                }
+                DataType dt = GXDLMSConverter.GetDLMSDataType(value);
+                WriteElementObject(name, value, dt, DataType.None);
             }
-            WriteElementObject(name, value, true);
         }
 
         /// <summary>
@@ -257,23 +243,33 @@ namespace Gurux.DLMS.Objects
         /// <param name="name">Object name.</param>
         /// <param name="value">Object value.</param>
         /// <param name="skipDefaultValue">Is default value serialized.</param>
-        public void WriteElementObject(string name, object value, bool skipDefaultValue)
+        public void WriteElementObject(string name, object value, DataType dt, DataType uiType)
         {
             if (value != null)
             {
-                if (skipDefaultValue && value is DateTime && ((DateTime)value == DateTime.MinValue || (DateTime)value == DateTime.MaxValue))
+                if (skipDefaults && value is DateTime && ((DateTime)value == DateTime.MinValue || (DateTime)value == DateTime.MaxValue))
                 {
                     return;
                 }
 
-                DataType dt = GXDLMSConverter.GetDLMSDataType(value);
-                if (value is GXArray || value is GXStructure)
-                {
-                    value = GXDLMSTranslator.ValueToXml(value);
-                }
                 writer.WriteStartElement(name);
                 writer.WriteAttributeString("Type", ((int)dt).ToString());
-                if (dt == DataType.Array)
+                if (uiType != DataType.None && dt != uiType && (uiType != DataType.String || dt == DataType.OctetString))
+                {
+                    writer.WriteAttributeString("UIType", ((int)uiType).ToString());
+                }
+                else if (value is float || value is double)
+                {
+                    if (value is double)
+                    {
+                        writer.WriteAttributeString("UIType", ((int)DataType.Float64).ToString());
+                    }
+                    else
+                    {
+                        writer.WriteAttributeString("UIType", ((int)DataType.Float32).ToString());
+                    }
+                }
+                if (dt == DataType.Array || dt == DataType.Structure)
                 {
                     WriteArray(value);
                 }
@@ -281,11 +277,11 @@ namespace Gurux.DLMS.Objects
                 {
                     if (value is GXDateTime)
                     {
-                        writer.WriteString(((GXDateTime)value).ToFormatString(System.Globalization.CultureInfo.InvariantCulture));
+                        writer.WriteString(((GXDateTime)value).ToFormatString(CultureInfo.InvariantCulture));
                     }
                     else if (value is DateTime)
                     {
-                        writer.WriteString(((DateTime)value).ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        writer.WriteString(((DateTime)value).ToString(CultureInfo.InvariantCulture));
                     }
                     else if (value is byte[])
                     {
@@ -293,12 +289,12 @@ namespace Gurux.DLMS.Objects
                     }
                     else
                     {
-                        writer.WriteString(Convert.ToString(value));
+                        writer.WriteString(Convert.ToString(value, CultureInfo.InvariantCulture));
                     }
                 }
                 writer.WriteEndElement();
             }
-            else if (!skipDefaultValue)
+            else if (!skipDefaults)
             {
                 writer.WriteStartElement(name);
                 writer.WriteEndElement();

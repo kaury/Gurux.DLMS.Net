@@ -276,7 +276,6 @@ namespace Gurux.DLMS.Objects
             {
                 if (Scaler != 1 && e.Value != null && !e.User)
                 {
-                    SetDataType(2, GXCommon.GetDLMSDataType(e.Value.GetType()));
                     try
                     {
                         if (settings != null && settings.IsServer)
@@ -335,14 +334,14 @@ namespace Gurux.DLMS.Objects
         {
             Unit = (Unit)reader.ReadElementContentAsInt("Unit", 0);
             Scaler = reader.ReadElementContentAsDouble("Scaler", 1);
-            Value = reader.ReadElementContentAsObject("Value", null);
+            Value = reader.ReadElementContentAsObject("Value", null, this, 2);
         }
 
         void IGXDLMSBase.Save(GXXmlWriter writer)
         {
             writer.WriteElementString("Unit", (int)Unit);
             writer.WriteElementString("Scaler", Scaler, 1);
-            writer.WriteElementObject("Value", Value);
+            writer.WriteElementObject("Value", Value, GetDataType(2), GetUIDataType(2));
         }
 
         void IGXDLMSBase.PostLoad(GXXmlReader reader)

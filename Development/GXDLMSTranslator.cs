@@ -277,6 +277,14 @@ namespace Gurux.DLMS
         /// <summary>
         /// Constructor.
         /// </summary>
+        public GXDLMSTranslator() :
+            this(TranslatorOutputType.SimpleXml)
+        {
+        }
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
         /// <param name="type">Translator output type.</param>
         public GXDLMSTranslator(TranslatorOutputType type)
         {
@@ -573,9 +581,9 @@ namespace Gurux.DLMS
             return MessageToXml(new GXByteBuffer(value));
         }
 
-        private void GetCiphering(GXDLMSSettings settings)
+        private void GetCiphering(GXDLMSSettings settings, bool force)
         {
-            if (this.Security != Enums.Security.None)
+            if (force || this.Security != Enums.Security.None)
             {
                 GXCiphering c = new Secure.GXCiphering(this.SystemTitle);
                 c.Security = Security;
@@ -751,7 +759,7 @@ namespace Gurux.DLMS
                 //If HDLC framing.
                 int offset = value.Position;
                 GXDLMSSettings settings = new GXDLMSSettings(true);
-                GetCiphering(settings);
+                GetCiphering(settings, true);
                 if (value.GetUInt8(value.Position) == 0x7e)
                 {
                     settings.InterfaceType = Enums.InterfaceType.HDLC;
@@ -1047,13 +1055,45 @@ namespace Gurux.DLMS
             return PduToXml(xml, value, omitDeclaration, omitNameSpace, true);
         }
 
+        private static bool IsCiphered(byte cmd)
+        {
+            switch ((Command)cmd)
+            {
+                case Command.GloReadRequest:
+                case Command.GloWriteRequest:
+                case Command.GloGetRequest:
+                case Command.GloSetRequest:
+                case Command.GloReadResponse:
+                case Command.GloWriteResponse:
+                case Command.GloGetResponse:
+                case Command.GloSetResponse:
+                case Command.GloMethodRequest:
+                case Command.GloMethodResponse:
+                case Command.DedGetRequest:
+                case Command.DedSetRequest:
+                case Command.DedReadResponse:
+                case Command.DedGetResponse:
+                case Command.DedSetResponse:
+                case Command.DedMethodRequest:
+                case Command.DedMethodResponse:
+                case Command.GeneralGloCiphering:
+                case Command.GeneralDedCiphering:
+                case Command.Aare:
+                case Command.Aarq:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+
         internal string PduToXml(GXDLMSTranslatorStructure xml, GXByteBuffer value, bool omitDeclaration, bool omitNameSpace, bool allowUnknownCommand)
         {
             GXDLMSSettings settings = new GXDLMSSettings(true);
-            GetCiphering(settings);
-            settings.Standard = Standard;
             GXReplyData data = new GXReplyData();
             byte cmd = value.GetUInt8();
+            GetCiphering(settings, IsCiphered(cmd));
+            settings.Standard = Standard;
             string str;
             int len;
             byte[] tmp;
@@ -1077,7 +1117,7 @@ namespace Gurux.DLMS
                 case (byte)Command.InitiateResponse:
                     value.Position = 0;
                     settings = new GXDLMSSettings(false);
-                    GetCiphering(settings);
+                    GetCiphering(settings, true);
                     GXAPDU.ParseInitiate(true, settings, settings.Cipher, value,
                             xml);
                     break;
@@ -1088,7 +1128,7 @@ namespace Gurux.DLMS
                 case (byte)Command.Aare:
                     value.Position = 0;
                     settings = new GXDLMSSettings(false);
-                    GetCiphering(settings);
+                    GetCiphering(settings, true);
                     GXAPDU.ParsePDU(settings, settings.Cipher, value, xml);
                     break;
                 case (byte)Command.GetRequest:
@@ -1372,6 +1412,7 @@ namespace Gurux.DLMS
                     {
                         throw new Exception("Invalid command.");
                     }
+                    --value.Position;
                     xml.AppendLine("<Data=\"" + GXCommon.ToHex(value.Data, false, value.Position, value.Size - value.Position) + "\" />");
                     break;
             }
@@ -1488,12 +1529,12 @@ namespace Gurux.DLMS
                 case (byte)Command.GloMethodResponse:
                 case (byte)Command.GloReadResponse:
                 case (byte)Command.GloWriteResponse:
-                case (byte)Command.GloEventNotificationRequest:
+                case (byte)Command.GloEventNotification:
                 case (byte)Command.DedInitiateResponse:
                 case (byte)Command.DedGetResponse:
                 case (byte)Command.DedSetResponse:
                 case (byte)Command.DedMethodResponse:
-                case (byte)Command.DedEventNotificationRequest:
+                case (byte)Command.DedEventNotification:
                     tmp = GXCommon.HexToBytes(GetValue(node, s));
                     s.settings.Cipher.Security = (Enums.Security)tmp[0];
                     s.data.Set(tmp);
@@ -1738,8 +1779,7 @@ namespace Gurux.DLMS
                     // Get PW
                     if (s.settings.Authentication == Authentication.Low)
                     {
-                        s.settings
-                        .Password = GXCommon.HexToBytes(GetValue(node, s));
+                        s.settings.Password = GXCommon.HexToBytes(GetValue(node, s));
                     }
                     else
                     {
@@ -1762,8 +1802,7 @@ namespace Gurux.DLMS
                     .StoCChallenge = GXCommon.HexToBytes(GetValue(node, s));
                     break;
                 case (int)TranslatorTags.Result:
-                    s.result = (AssociationResult)
-                               int.Parse(GetValue(node, s));
+                    s.result = (AssociationResult)int.Parse(GetValue(node, s));
                     break;
                 case (int)Command.ConfirmedServiceError:
                     if (s.command == Command.None)
@@ -2362,7 +2401,14 @@ namespace Gurux.DLMS
                     case (int)TranslatorTags.Parameter:
                         break;
                     case (int)TranslatorTags.LastBlock:
-                        s.data.SetUInt8((byte)s.ParseShort(GetValue(node, s)));
+                        if (s.OutputType == TranslatorOutputType.SimpleXml)
+                        {
+                            s.data.SetUInt8((byte)s.ParseShort(GetValue(node, s)));
+                        }
+                        else
+                        {
+                            s.data.SetUInt8((byte)(bool.Parse(GetValue(node, s)) ? 1 : 0));
+                        }
                         break;
                     case (int)TranslatorTags.BlockNumber:
                         //BlockNumber
@@ -3039,7 +3085,7 @@ namespace Gurux.DLMS
                     GXCommon.SetObjectCount(s.data.Size, bb);
                     bb.Set(s.data);
                     break;
-                case Command.GloEventNotificationRequest:
+                case Command.GloEventNotification:
                     break;
                 default:
                 case Command.None:

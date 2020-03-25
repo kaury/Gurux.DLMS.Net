@@ -56,7 +56,7 @@ namespace Gurux.DLMS
         /// <summary>
         /// Constructor.
         /// </summary>
-        public GXDLMSConverter()
+        public GXDLMSConverter() : this(Standard.DLMS)
         {
 
         }
@@ -264,15 +264,14 @@ namespace Gurux.DLMS
 
         private static void UpdateOBISCodeInfo(GXStandardObisCodeCollection codes, GXDLMSObject it, Standard standard)
         {
-            if (!string.IsNullOrEmpty(it.Description))
-            {
-                return;
-            }
             GXStandardObisCode code = codes.Find(it.LogicalName, it.ObjectType, standard)[0];
-            it.Description = code.Description;
-            if (standard == Standard.SaudiArabia)
+            if (string.IsNullOrEmpty(it.Description))
             {
-                it.Description = it.Description.Replace("U(", "V(");
+                it.Description = code.Description;
+                if (standard == Standard.SaudiArabia)
+                {
+                    it.Description = it.Description.Replace("U(", "V(");
+                }
             }
             //If string is used
             string datatype = code.DataType;
@@ -840,7 +839,7 @@ namespace Gurux.DLMS
             }
             else if (type == DataType.Structure || type == DataType.Array)
             {
-                ret = GXDLMSTranslator.XmlToValue((string) value);
+                ret = GXDLMSTranslator.XmlToValue((string)value);
             }
             else
             {

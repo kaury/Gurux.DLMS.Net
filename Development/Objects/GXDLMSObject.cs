@@ -136,14 +136,17 @@ namespace Gurux.DLMS.Objects
         {
         }
 
-        public static bool ValidateLogicalName(String ln)
+        /// <summary>
+        /// Validate logical name.
+        /// </summary>
+        /// <param name="ln"></param>
+        public static void ValidateLogicalName(String ln)
         {
-            if (ln == null)
-            {
-                return false;
-            }
             string[] items = ln.Split('.');
-            return items.Length == 6;
+            if (items.Length != 6)
+            {
+                throw new GXDLMSException("Invalid Logical Name.");
+            }
         }
 
         /// <summary>
@@ -157,10 +160,7 @@ namespace Gurux.DLMS.Objects
             this.ShortName = sn;
             if (ln != null)
             {
-                if (!ValidateLogicalName(ln))
-                {
-                    throw new GXDLMSException("Invalid Logical Name.");
-                }
+                ValidateLogicalName(ln);
             }
             this.LogicalName = ln;
         }
@@ -215,6 +215,21 @@ namespace Gurux.DLMS.Objects
         {
             get;
             internal set;
+        }
+
+        /// <summary>
+        /// Gets or sets the object that contains data about the control.
+        /// </summary>
+#if !WINDOWS_UWP
+        [ReadOnly(true)]
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+#endif
+        [System.Xml.Serialization.XmlIgnore()]
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public object Tag
+        {
+            get;
+            set;
         }
 
         /// <summary>

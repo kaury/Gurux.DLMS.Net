@@ -196,6 +196,7 @@ namespace Gurux.DLMS
         /// <summary>
         /// Standard says that Time zone is from normal time to UTC in minutes.
         /// If meter is configured to use UTC time (UTC to normal time) set this to true.
+        /// Example. Italy, Saudi Arabia and India standards are using UTC time zone, not DLMS standard time zone.
         /// </summary>
         public bool UtcTimeZone
         {
@@ -568,8 +569,14 @@ namespace Gurux.DLMS
         [DefaultValue(false)]
         public bool AutoIncreaseInvokeID
         {
-            get;
-            set;
+            get
+            {
+                return Settings.AutoIncreaseInvokeID;
+            }
+            set
+            {
+                Settings.AutoIncreaseInvokeID = value;
+            }
         }
 
         /// <summary>
@@ -847,6 +854,16 @@ namespace Gurux.DLMS
             {
                 pw = Settings.Cipher.SystemTitle;
             }
+            else if (Settings.Authentication == Enums.Authentication.HighSHA256)
+            {
+                GXByteBuffer tmp = new GXByteBuffer();
+                tmp.Set(Settings.Password);
+                tmp.Set(Settings.Cipher.SystemTitle);
+                tmp.Set(Settings.SourceSystemTitle);
+                tmp.Set(Settings.StoCChallenge);
+                tmp.Set(Settings.CtoSChallenge);
+                pw = tmp.Array();
+            }
             else
             {
                 pw = Settings.Password;
@@ -854,7 +871,7 @@ namespace Gurux.DLMS
             UInt32 ic = 0;
             if (Settings.Cipher != null)
             {
-                ic = Settings.Cipher.InvocationCounter;
+                ic = Settings.Cipher.InvocationCounter++;
             }
             byte[] challenge = GXSecure.Secure(Settings, Settings.Cipher, ic,
                                                Settings.StoCChallenge, pw);
@@ -892,6 +909,16 @@ namespace Gurux.DLMS
                     GXByteBuffer bb = new GXByteBuffer(value);
                     bb.GetUInt8();
                     ic = bb.GetUInt32();
+                }
+                else if (Settings.Authentication == Enums.Authentication.HighSHA256)
+                {
+                    GXByteBuffer tmp2 = new GXByteBuffer();
+                    tmp2.Set(Settings.Password);
+                    tmp2.Set(Settings.SourceSystemTitle);
+                    tmp2.Set(Settings.Cipher.SystemTitle);
+                    tmp2.Set(Settings.CtoSChallenge);
+                    tmp2.Set(Settings.StoCChallenge);
+                    secret = tmp2.Array();
                 }
                 else
                 {
@@ -1277,7 +1304,7 @@ namespace Gurux.DLMS
                     List<object> it;
                     if (tmp is List<object>)
                     {
-                        it = (List<object>) tmp;
+                        it = (List<object>)tmp;
                     }
                     else
                     {
@@ -1381,7 +1408,7 @@ namespace Gurux.DLMS
             List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> columns)
         {
             //Update data type if value is readable.
-            if (value != null)
+            if (value != null && target.GetDataType(attributeIndex) == DataType.None)
             {
                 try
                 {
@@ -1683,10 +1710,6 @@ namespace Gurux.DLMS
                 throw new ArgumentOutOfRangeException("Invalid parameter");
             }
             Settings.ResetBlockIndex();
-            if (AutoIncreaseInvokeID)
-            {
-                Settings.InvokeID = (byte)((Settings.InvokeID + 1) & 0xF);
-            }
             if (type == DataType.None && value != null)
             {
                 type = GXDLMSConverter.GetDLMSDataType(value);
@@ -1716,15 +1739,6 @@ namespace Gurux.DLMS
             }
             else
             {
-                byte requestType;
-                if (type == DataType.None)
-                {
-                    requestType = (byte)VariableAccessSpecification.VariableName;
-                }
-                else
-                {
-                    requestType = (byte)VariableAccessSpecification.ParameterisedAccess;
-                }
                 int ind, count;
                 GXDLMS.GetActionInfo(objectType, out ind, out count);
                 if (index > count)
@@ -1741,8 +1755,7 @@ namespace Gurux.DLMS
                 {
                     attributeDescriptor.SetUInt8(1);
                 }
-
-                return GXDLMS.GetSnMessages(new GXDLMSSNParameters(Settings, Command.ReadRequest, 1, requestType, attributeDescriptor, data));
+                return GXDLMS.GetSnMessages(new GXDLMSSNParameters(Settings, Command.WriteRequest, 1, (byte)VariableAccessSpecification.VariableName, attributeDescriptor, data));
             }
         }
 
@@ -1796,10 +1809,6 @@ namespace Gurux.DLMS
         private byte[][] Write2(object name, object value, DataType type, ObjectType objectType, int index)
         {
             Settings.ResetBlockIndex();
-            if (AutoIncreaseInvokeID)
-            {
-                Settings.InvokeID = (byte)((Settings.InvokeID + 1) & 0xF);
-            }
             if (type == DataType.None && value != null)
             {
                 type = GXDLMSConverter.GetDLMSDataType(value);
@@ -1862,10 +1871,6 @@ namespace Gurux.DLMS
                 throw new ArgumentException("Invalid parameter");
             }
             Settings.ResetBlockIndex();
-            if (AutoIncreaseInvokeID)
-            {
-                Settings.InvokeID = (byte)((Settings.InvokeID + 1) & 0xF);
-            }
             GXByteBuffer attributeDescriptor = new GXByteBuffer();
             byte[][] reply;
             if (UseLogicalNameReferencing)
@@ -1928,6 +1933,10 @@ namespace Gurux.DLMS
         /// <returns>Read List request as byte array.</returns>
         public byte[][] ReadList(List<KeyValuePair<GXDLMSObject, int>> list)
         {
+            if ((NegotiatedConformance & Conformance.MultipleReferences) == 0)
+            {
+                throw new ArgumentOutOfRangeException("Meter doesn't support multiple objects reading with one request.");
+            }
             if (list == null || list.Count == 0)
             {
                 throw new ArgumentOutOfRangeException("Invalid parameter.");
@@ -1937,7 +1946,7 @@ namespace Gurux.DLMS
             GXByteBuffer data = new GXByteBuffer();
             if (this.UseLogicalNameReferencing)
             {
-                GXDLMSLNParameters p = new GXDLMSLNParameters(this, Settings, 0, Command.GetRequest, (byte)GetCommandType.WithList, null, data, 0xff, Command.None);
+                GXDLMSLNParameters p = new GXDLMSLNParameters(this, Settings, 0, Command.GetRequest, (byte)GetCommandType.WithList, data, null, 0xff, Command.None);
                 //Request service primitive shall always fit in a single APDU.
                 int pos = 0, count = (Settings.MaxPduSize - 12) / 10;
                 if (list.Count < count)
@@ -1987,7 +1996,7 @@ namespace Gurux.DLMS
             }
             else
             {
-                GXDLMSSNParameters p = new GXDLMSSNParameters(Settings, Command.ReadRequest, list.Count, 0xFF, null, data);
+                GXDLMSSNParameters p = new GXDLMSSNParameters(Settings, Command.ReadRequest, list.Count, 0xFF, data, null);
                 foreach (KeyValuePair<GXDLMSObject, int> it in list)
                 {
                     // Add variable type.
@@ -2000,6 +2009,100 @@ namespace Gurux.DLMS
                         messages.AddRange(GXDLMS.GetSnMessages(p));
                         data.Clear();
                     }
+                }
+                messages.AddRange(GXDLMS.GetSnMessages(p));
+            }
+            return messages.ToArray();
+        }
+
+        /// <summary>
+        /// Write list of COSEM objects.
+        /// </summary>
+        /// <param name="list">List of COSEM object and attribute index to read.</param>
+        /// <returns>Write List request as byte array.</returns>
+        public byte[][] WriteList(List<KeyValuePair<GXDLMSObject, int>> list)
+        {
+            if ((NegotiatedConformance & Conformance.MultipleReferences) == 0)
+            {
+                throw new ArgumentOutOfRangeException("Meter doesn't support multiple objects writing with one request.");
+            }
+            if (list == null || list.Count == 0)
+            {
+                throw new ArgumentOutOfRangeException("Invalid parameter.");
+            }
+            Settings.ResetBlockIndex();
+            List<byte[]> messages = new List<byte[]>();
+            GXByteBuffer data = new GXByteBuffer();
+            if (this.UseLogicalNameReferencing)
+            {
+                GXDLMSLNParameters p = new GXDLMSLNParameters(this, Settings, 0, Command.SetRequest, (byte)SetCommandType.WithList, null, data, 0xff, Command.None);
+                // Add length.
+                GXCommon.SetObjectCount(list.Count, data);
+                foreach (KeyValuePair<GXDLMSObject, int> it in list)
+                {
+                    // CI.
+                    data.SetUInt16((UInt16)it.Key.ObjectType);
+                    data.Set(GXCommon.LogicalNameToBytes(it.Key.LogicalName));
+                    // Attribute ID.
+                    data.SetUInt8((byte)it.Value);
+                    // Attribute selector is not used.
+                    data.SetUInt8(0);
+                }
+                // Add length.
+                GXCommon.SetObjectCount(list.Count, data);
+                foreach (KeyValuePair<GXDLMSObject, int> it in list)
+                {
+                    Object value = (it.Key as IGXDLMSBase).GetValue(Settings, new ValueEventArgs(Settings, it.Key, it.Value, 0, null));
+                    DataType type = it.Key.GetDataType(it.Value);
+                    if (type == DataType.None)
+                    {
+                        type = GXDLMSConverter.GetDLMSDataType(value);
+                    }
+                    //If values is show as string, but send as byte array.
+                    if (value is string && type == DataType.OctetString)
+                    {
+                        DataType tp = it.Key.GetUIDataType(it.Value);
+                        if (tp == DataType.String)
+                        {
+                            value = ASCIIEncoding.ASCII.GetBytes((string)value);
+                        }
+                    }
+                    GXCommon.SetData(Settings, data, type, value);
+                }
+                messages.AddRange(GXDLMS.GetLnMessages(p));
+            }
+            else
+            {
+                GXDLMSSNParameters p = new GXDLMSSNParameters(Settings, Command.WriteRequest, list.Count, 0xFF, null, data);
+                foreach (KeyValuePair<GXDLMSObject, int> it in list)
+                {
+                    // Add variable type.
+                    data.SetUInt8(VariableAccessSpecification.VariableName);
+                    int sn = it.Key.ShortName;
+                    sn += (it.Value - 1) * 8;
+                    data.SetUInt16((UInt16)sn);
+                }
+                // Add length.
+                GXCommon.SetObjectCount(list.Count, data);
+                p.count = list.Count;
+                foreach (KeyValuePair<GXDLMSObject, int> it in list)
+                {
+                    Object value = (it.Key as IGXDLMSBase).GetValue(Settings, new ValueEventArgs(Settings, it.Key, it.Value, 0, null));
+                    DataType type = it.Key.GetDataType(it.Value);
+                    if (type == DataType.None)
+                    {
+                        type = GXDLMSConverter.GetDLMSDataType(value);
+                    }
+                    //If values is show as string, but send as byte array.
+                    if (value is string && type == DataType.OctetString)
+                    {
+                        DataType tp = it.Key.GetUIDataType(it.Value);
+                        if (tp == DataType.String)
+                        {
+                            value = ASCIIEncoding.ASCII.GetBytes((string)value);
+                        }
+                    }
+                    GXCommon.SetData(Settings, data, type, value);
                 }
                 messages.AddRange(GXDLMS.GetSnMessages(p));
             }
@@ -2033,7 +2136,7 @@ namespace Gurux.DLMS
         /// <param name="index">One based start index.</param>
         /// <param name="count">Rows count to read.</param>
         /// <returns>Read message as byte array.</returns>
-        public byte[][] ReadRowsByEntry(GXDLMSProfileGeneric pg, int index, int count)
+        public byte[][] ReadRowsByEntry(GXDLMSProfileGeneric pg, UInt32 index, UInt32 count)
         {
             return ReadRowsByEntry(pg, index, count, null);
         }
@@ -2049,7 +2152,7 @@ namespace Gurux.DLMS
         /// <param name="count">Rows count to read.</param>
         /// <param name="columns">Columns to read.</param>
         /// <returns>Read message as byte array.</returns>
-        public byte[][] ReadRowsByEntry(GXDLMSProfileGeneric pg, int index, int count,
+        public byte[][] ReadRowsByEntry(GXDLMSProfileGeneric pg, UInt32 index, UInt32 count,
                                         List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> columns)
         {
             int columnIndex = 1;
@@ -2106,7 +2209,7 @@ namespace Gurux.DLMS
         /// <param name="columnStart">One based column start index.</param>
         /// <param name="columnEnd">Column end index.</param>
         /// <returns>Read message as byte array.</returns>
-        public byte[][] ReadRowsByEntry(GXDLMSProfileGeneric pg, int index, int count, int columnStart, int columnEnd)
+        public byte[][] ReadRowsByEntry(GXDLMSProfileGeneric pg, UInt32 index, UInt32 count, int columnStart, int columnEnd)
         {
             if (index < 0)
             {
@@ -2124,7 +2227,7 @@ namespace Gurux.DLMS
             {
                 throw new ArgumentOutOfRangeException("columnEnd");
             }
-            pg.Reset();
+            pg.Buffer.Clear();
             Settings.ResetBlockIndex();
             GXByteBuffer buff = new GXByteBuffer(19);
             // Add AccessSelector value
@@ -2219,7 +2322,7 @@ namespace Gurux.DLMS
         public byte[][] ReadRowsByRange(GXDLMSProfileGeneric pg, GXDateTime start, GXDateTime end,
                                         List<GXKeyValuePair<GXDLMSObject, GXDLMSCaptureObject>> columns)
         {
-            pg.Reset();
+            pg.Buffer.Clear();
             Settings.ResetBlockIndex();
             string ln = "0.0.1.0.0.255";
             ObjectType type = ObjectType.Clock;
@@ -2381,11 +2484,11 @@ namespace Gurux.DLMS
             {
                 ret = GXDLMS.GetData(Settings, reply, data, notify, this);
             }
-            catch (Exception ex)
+            catch
             {
                 if (translator == null || throwExceptions)
                 {
-                    throw ex;
+                    throw;
                 }
                 ret = true;
             }

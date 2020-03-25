@@ -143,7 +143,8 @@ namespace Gurux.DLMS.Internal
                 data.SetUInt8((byte) (ciphered ? 4 : 2));
             }
             //Add system title if cipher or GMAC authentication is used..
-            if (!settings.IsServer && (ciphered || settings.Authentication == Authentication.HighGMAC))
+            if (!settings.IsServer && (ciphered || settings.Authentication == Authentication.HighGMAC ||
+                settings.Authentication == Authentication.HighSHA256))
             {
                 if (cipher.SystemTitle == null || cipher.SystemTitle.Length == 0)
                 {
@@ -262,7 +263,7 @@ namespace Gurux.DLMS.Internal
                     GetInitiateRequest(settings, cipher, tmp);
                     byte cmd = (byte)Command.GloInitiateRequest;
                     AesGcmParameter p = new AesGcmParameter(cmd, cipher.Security,
-                        cipher.InvocationCounter, cipher.SystemTitle,
+                        cipher.InvocationCounter++, cipher.SystemTitle,
                         cipher.BlockCipherKey,
                         cipher.AuthenticationKey);
                     byte[] crypted = GXCiphering.Encrypt(p, tmp.Array());
@@ -331,8 +332,7 @@ namespace Gurux.DLMS.Internal
                 }
                 //Optional usage field of the negotiated quality of service component
                 tag = data.GetUInt8();
-                len = 0;
-                if (tag != 0)//Skip if used.
+                if (tag != 0)
                 {
                     settings.QualityOfService = data.GetUInt8();
                     if (xml != null)
@@ -508,7 +508,20 @@ namespace Gurux.DLMS.Internal
             if (!response)
             {
                 //Proposed max PDU size.
-                settings.MaxPduSize = data.GetUInt16();
+                UInt16 maxPdu = 0;
+                try
+                {
+                    maxPdu = data.GetUInt16();
+                    settings.MaxPduSize = maxPdu;
+                }
+                catch(Exception ex)
+                {
+                    if (xml == null)
+                    {
+                        throw;
+                    }
+                    xml.AppendComment("ERROR! Invalid max PDU Size: " + maxPdu);
+                }
                 if (xml != null)
                 {
                     // ProposedConformance closing
@@ -714,7 +727,7 @@ namespace Gurux.DLMS.Internal
             }
             if (xml != null && xml.OutputType == TranslatorOutputType.StandardXml)
             {
-                xml.AppendLine(Command.InitiateRequest, null, GXCommon
+                xml.AppendLine(TranslatorGeneralTags.UserInformation, null, GXCommon
                                .ToHex(data.Data, false, data.Position, len));
                 data.Position = data.Position + len;
                 return;
@@ -826,19 +839,16 @@ namespace Gurux.DLMS.Internal
                 }
                 else
                 {
-                    if (xml != null)
+                    if (xml.OutputType == TranslatorOutputType.SimpleXml)
                     {
-                        if (xml.OutputType == TranslatorOutputType.SimpleXml)
-                        {
-                            xml.AppendLine(TranslatorGeneralTags.ApplicationContextName,
-                                           "Value", "UNKNOWN");
-                        }
-                        else
-                        {
-                            xml.AppendLine(
-                                TranslatorGeneralTags.ApplicationContextName,
-                                null, "5");
-                        }
+                        xml.AppendLine(TranslatorGeneralTags.ApplicationContextName,
+                                        "Value", "UNKNOWN");
+                    }
+                    else
+                    {
+                        xml.AppendLine(
+                            TranslatorGeneralTags.ApplicationContextName,
+                            null, "5");
                     }
                     return false;
                 }
@@ -1508,9 +1518,10 @@ namespace Gurux.DLMS.Internal
                     cmd = (byte)Command.GloInitiateResponse;
                 }
                 AesGcmParameter p = new AesGcmParameter(cmd, cipher.Security,
-                     cipher.InvocationCounter, cipher.SystemTitle,
+                     cipher.InvocationCounter++, cipher.SystemTitle,
                      cipher.BlockCipherKey, cipher.AuthenticationKey);
-                return GXCiphering.Encrypt(p, data.Array());
+                byte[] tmp = GXCiphering.Encrypt(p, data.Array());
+                return tmp;
             }
             return data.Array();
         }
@@ -1523,10 +1534,8 @@ namespace Gurux.DLMS.Internal
                                           GXByteBuffer errorData, GXByteBuffer encryptedData)
         {
             int offset = data.Size;
-            // Set AARE tag and length
+            // Set AARE tag.
             data.SetUInt8(((byte)BerType.Application | (byte)BerType.Constructed | (byte)PduType.ApplicationContextName)); //0x61
-                                                                                                                           // Length is updated later.
-            data.SetUInt8(0);
             GenerateApplicationContextName(settings, data, cipher);
             //Result
             data.SetUInt8((byte)BerType.Context | (byte)BerType.Constructed | (byte)BerType.Integer);//0xA2
@@ -1557,7 +1566,8 @@ namespace Gurux.DLMS.Internal
             data.SetUInt8(Convert.ToByte(diagnostic));
 
             //SystemTitle
-            if (cipher != null && (cipher.IsCiphered() || settings.Authentication == Authentication.HighGMAC))
+            if (cipher != null && (cipher.IsCiphered() || settings.Authentication == Authentication.HighGMAC ||
+                settings.Authentication == Authentication.HighSHA256))
             {
                 data.SetUInt8((byte)BerType.Context | (byte)BerType.Constructed | (byte)PduType.CalledApInvocationId);
                 data.SetUInt8((byte)(2 + cipher.SystemTitle.Length));
@@ -1632,7 +1642,8 @@ namespace Gurux.DLMS.Internal
                 data.SetUInt8((byte)tmp.Length);
                 data.Set(tmp);
             }
-            data.SetUInt8((UInt16)(offset + 1), (byte)(data.Size - offset - 2));
+            // Set AARE length
+            GXCommon.InsertObjectCount(data.Size - offset - 1, data, offset + 1);
         }
     }
 }

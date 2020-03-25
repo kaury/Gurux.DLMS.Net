@@ -106,6 +106,10 @@ namespace Gurux.DLMS.Secure
             {
                 challenge.Set(data);
             }
+            else if (settings.Authentication == Authentication.HighSHA256)
+            {
+                challenge.Set(secret);
+            }
             else
             {
                 challenge.Set(data);

@@ -42,9 +42,9 @@ using System.Xml.Serialization;
 namespace Gurux.DLMS
 {
     /// <summary>
-    /// GXDLMS implements methods to communicate with DLMS/COSEM metering devices.
+    /// GXDLMSMeterBase implements properties to communicate with DLMS/COSEM metering devices.
     /// </summary>
-    public class GXDLMSMeter
+    public class GXDLMSMeterBase
     {
         /// <summary>
         /// Define how long reply is waited in seconds.
@@ -246,6 +246,7 @@ namespace Gurux.DLMS
         /// <summary>
         /// Standard says that Time zone is from normal time to UTC in minutes.
         /// If meter is configured to use UTC time (UTC to normal time) set this to true.
+        /// Example. Italy, Saudi Arabia and India standards are using UTC time zone, not DLMS standard time zone.
         /// </summary>
         [DefaultValue(false)]
         [Description("Use UTC time zone.")]
@@ -483,8 +484,9 @@ namespace Gurux.DLMS
         }
 
         /// <summary>
-        /// Name of the manufacturer.
+        /// FLAG ID.
         /// </summary>
+        [Description("FLAG ID.")]
         public string Manufacturer
         {
             get;
@@ -512,7 +514,7 @@ namespace Gurux.DLMS
         /// <summary>
         /// Constructor.
         /// </summary>
-        public GXDLMSMeter()
+        public GXDLMSMeterBase()
         {
             StartProtocol = StartProtocolType.IEC;
             Standard = Standard.DLMS;
@@ -529,7 +531,6 @@ namespace Gurux.DLMS
             ServiceClass = ServiceClass.Confirmed;
             Priority = Priority.High;
             UserId = -1;
-            Objects = new GXDLMSObjectCollection(this);
         }
 
         /// <summary>
@@ -560,36 +561,12 @@ namespace Gurux.DLMS
             set;
         }
 
-        private GXDLMSObjectCollection objects;
-
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
-        [XmlArray("Objects2")]
-        public virtual GXDLMSObjectCollection Objects
-        {
-            get
-            {
-                return objects;
-            }
-            set
-            {
-                if (objects != null)
-                {
-                    objects.Parent = null;
-                }
-                objects = value;
-                if (objects != null)
-                {
-                    objects.Parent = this;
-                }
-            }
-        }
-
         /// <summary>
         /// Copy meter settings.
         /// </summary>
         /// <param name="target"></param>
         /// <param name="source"></param>
-        public static void Copy(GXDLMSMeter target, GXDLMSMeter source)
+        public static void Copy(GXDLMSMeterBase target, GXDLMSMeterBase source)
         {
             target.WaitTime = source.WaitTime;
             target.ResendCount = source.ResendCount;
@@ -636,8 +613,73 @@ namespace Gurux.DLMS
             target.MediaType = source.MediaType;
             target.MediaSettings = source.MediaSettings;
             target.UseLogicalNameReferencing = source.UseLogicalNameReferencing;
-            target.Objects = source.Objects;
             target.UseProtectedRelease = source.UseProtectedRelease;
+        }
+    }
+
+    /// <summary>
+    /// GXDLMSmeter implements properties to communicate with DLMS/COSEM metering devices.
+    /// </summary>
+    public class GXDLMSMeter : GXDLMSMeterBase
+    {
+        private GXDLMSObjectCollection objects;
+
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        public GXDLMSMeter() : base()
+        {
+            Objects = new GXDLMSObjectCollection(this);
+        }
+
+
+        /// <summary>
+        /// Gets or sets the object that contains data about the control.
+        /// </summary>
+#if !WINDOWS_UWP
+        [ReadOnly(true)]
+        [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+#endif
+        [System.Xml.Serialization.XmlIgnore()]
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public object Tag
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Copy meter settings.
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="source"></param>
+        public void Copy(GXDLMSMeter target, GXDLMSMeter source)
+        {
+            GXDLMSMeterBase.Copy(target, source);
+            target.Objects = source.Objects;
+            target.Tag = source.Tag;
+        }
+
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
+        [XmlArray("Objects2")]
+        public virtual GXDLMSObjectCollection Objects
+        {
+            get
+            {
+                return objects;
+            }
+            set
+            {
+                if (objects != null)
+                {
+                    objects.Parent = null;
+                }
+                objects = value;
+                if (objects != null)
+                {
+                    objects.Parent = this;
+                }
+            }
         }
     }
 }

@@ -79,8 +79,12 @@ namespace GuruxDLMSServerExample
             MaxReceivePDUSize = 1024;
             //Default secret.
             ln.Secret = ASCIIEncoding.ASCII.GetBytes("Gurux");
+            //Add security setup object.
+            ln.SecuritySetupReference = "0.0.43.0.0.255";
+            GXDLMSSecuritySetup s = new GXDLMSSecuritySetup("0.0.43.0.0.255");
+            s.ServerSystemTitle = this.Ciphering.SystemTitle;
+            Items.Add(s);
         }
-
 
         /// <summary>
         /// Constructor.
@@ -93,6 +97,11 @@ namespace GuruxDLMSServerExample
             MaxReceivePDUSize = 1024;
             //Default secret.
             sn.Secret = ASCIIEncoding.ASCII.GetBytes("Gurux");
+            //Add security setup object.
+            sn.SecuritySetupReference = "0.0.43.0.0.255";
+            GXDLMSSecuritySetup s = new GXDLMSSecuritySetup("0.0.43.0.0.255");
+            s.ServerSystemTitle = this.Ciphering.SystemTitle;
+            Items.Add(s);
         }
 
         /// <summary>
@@ -106,6 +115,11 @@ namespace GuruxDLMSServerExample
             MaxReceivePDUSize = 1024;
             //Default secret.
             ln.Secret = ASCIIEncoding.ASCII.GetBytes("Gurux");
+            //Add security setup object.
+            ln.SecuritySetupReference = "0.0.43.0.0.255";
+            GXDLMSSecuritySetup s = new GXDLMSSecuritySetup("0.0.43.0.0.255");
+            s.ServerSystemTitle = this.Ciphering.SystemTitle;
+            Items.Add(s);
         }
 
 
@@ -120,6 +134,11 @@ namespace GuruxDLMSServerExample
             MaxReceivePDUSize = 1024;
             //Default secret.
             sn.Secret = ASCIIEncoding.ASCII.GetBytes("Gurux");
+            //Add security setup object.
+            sn.SecuritySetupReference = "0.0.43.0.0.255";
+            GXDLMSSecuritySetup s = new GXDLMSSecuritySetup("0.0.43.0.0.255");
+            s.ServerSystemTitle = this.Ciphering.SystemTitle;
+            Items.Add(s);
         }
 
         Gurux.Common.IGXMedia Media = null;
@@ -142,8 +161,43 @@ namespace GuruxDLMSServerExample
             Init();
         }
 
+        //Add Logical Device Name. 123456 is meter serial number.
+        GXDLMSData AddLogicalDeviceName()
+        {
+            GXDLMSData ldn = new GXDLMSData("0.0.42.0.0.255");
+            ldn.Value = "Gurux123456";
+            //Value is get as Octet String.
+            ldn.SetDataType(2, DataType.OctetString);
+            ldn.SetUIDataType(2, DataType.String);
+            Items.Add(ldn);
+            return ldn;
+        }
+
+        void AddFirmwareVersion()
+        {
+            GXDLMSData fw = new GXDLMSData("1.0.0.2.0.255");
+            fw.Value = "Gurux FW 0.0.1";
+            Items.Add(fw);
+        }
+
+        /// <summary>
+        /// Add invocation counter.
+        /// </summary>
+        void AddInvocationCounter()
+        {
+            GXDLMSData d = new GXDLMSData("0.0.43.1.0.255");
+            d.Value = 0;
+            d.SetDataType(2, DataType.UInt32);
+            //Set initial value for invocation counter.
+            d.Value = (UInt32)100;
+            Items.Add(d);
+        }
+
         void Init()
         {
+            //KEK is used when authentication keys are updated.
+            Kek = ASCIIEncoding.ASCII.GetBytes("1111111111111111");
+
             //If pre-established connections are used.
             ClientSystemTitle = ASCIIEncoding.ASCII.GetBytes("ABCDEFGH");
             Ciphering.Security = Security.AuthenticationEncryption;
@@ -156,16 +210,12 @@ namespace GuruxDLMSServerExample
             Media.Open();
             ///////////////////////////////////////////////////////////////////////
             //Add Logical Device Name. 123456 is meter serial number.
-            GXDLMSData ldn = new GXDLMSData("0.0.42.0.0.255");
-            ldn.Value = "Gurux123456";
-            //Value is get as Octet String.
-            ldn.SetDataType(2, DataType.OctetString);
-            ldn.SetUIDataType(2, DataType.String);
-            Items.Add(ldn);
+            GXDLMSData ldn = AddLogicalDeviceName();
             //Add firmware version.
-            GXDLMSData fw = new GXDLMSData("1.0.0.2.0.255");
-            fw.Value = "Gurux FW 0.0.1";
-            Items.Add(fw);
+            AddFirmwareVersion();
+            //Add invocation counter.
+            AddInvocationCounter();
+
             //Add Last average.
             GXDLMSRegister r = new GXDLMSRegister("1.1.21.25.0.255");
             //Set access right. Client can't change average value.
@@ -244,8 +294,8 @@ namespace GuruxDLMSServerExample
             activity.Time = new GXDateTime(DateTime.Now);
             Items.Add(activity);
             ///////////////////////////////////////////////////////////////////////
-            //Add Optical Port Setup object.
-            GXDLMSIECOpticalPortSetup optical = new GXDLMSIECOpticalPortSetup();
+            //Add local port setup object.
+            GXDLMSIECLocalPortSetup optical = new GXDLMSIECLocalPortSetup();
             optical.DefaultMode = OpticalProtocolMode.Default;
             optical.ProposedBaudrate = BaudRate.Baudrate9600;
             optical.DefaultBaudrate = BaudRate.Baudrate300;
@@ -391,8 +441,6 @@ namespace GuruxDLMSServerExample
             Items.Add(new GXDLMSG3Plc6LoWPan());
             Items.Add(new GXDLMSG3PlcMacLayerCounters());
             Items.Add(new GXDLMSG3PlcMacSetup());
-            //Add security setup object
-            Items.Add(new GXDLMSSecuritySetup());
 
             Items.Add(new GXDLMSAccount());
             Items.Add(new GXDLMSCredit());
@@ -1094,6 +1142,16 @@ namespace GuruxDLMSServerExample
                     {
                         HandleProfileGenericActions(it);
                     }
+                }
+                if (it.Target is GXDLMSSecuritySetup && it.Index == 2)
+                {
+                    Console.WriteLine("----------------------------------------------------------");
+                    Console.WriteLine("Updated keys:");
+                    Console.WriteLine("Server System title: {0}", GXDLMSTranslator.ToHex(Ciphering.SystemTitle));
+                    Console.WriteLine("Authentication key: {0}", GXDLMSTranslator.ToHex(Ciphering.AuthenticationKey));
+                    Console.WriteLine("Block cipher key: {0}", GXDLMSTranslator.ToHex(Ciphering.BlockCipherKey));
+                    Console.WriteLine("Client System title: {0}", GXDLMSTranslator.ToHex(ClientSystemTitle));
+                    Console.WriteLine("Master key (KEK) title: {0}", GXDLMSTranslator.ToHex(Kek));
                 }
             }
         }

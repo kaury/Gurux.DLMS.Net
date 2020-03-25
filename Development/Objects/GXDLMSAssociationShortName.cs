@@ -119,6 +119,16 @@ namespace Gurux.DLMS.Objects
                     bb.GetUInt8();
                     ic = bb.GetUInt32();
                 }
+                else if (settings.Authentication == Authentication.HighSHA256)
+                {
+                    GXByteBuffer tmp = new GXByteBuffer();
+                    tmp.Set(Secret);
+                    tmp.Set(settings.SourceSystemTitle);
+                    tmp.Set(settings.Cipher.SystemTitle);
+                    tmp.Set(settings.StoCChallenge);
+                    tmp.Set(settings.CtoSChallenge);
+                    secret = tmp.Array();
+                }
                 else
                 {
                     secret = Secret;
@@ -130,13 +140,23 @@ namespace Gurux.DLMS.Objects
                     if (settings.Authentication == Authentication.HighGMAC)
                     {
                         secret = settings.Cipher.SystemTitle;
-                        ic = settings.Cipher.InvocationCounter;
+                        ic = settings.Cipher.InvocationCounter++;
                     }
                     else
                     {
                         secret = Secret;
                     }
                     settings.Connected |= ConnectionState.Dlms;
+                    if (settings.Authentication == Authentication.HighSHA256)
+                    {
+                        GXByteBuffer tmp = new GXByteBuffer();
+                        tmp.Set(Secret);
+                        tmp.Set(settings.Cipher.SystemTitle);
+                        tmp.Set(settings.SourceSystemTitle);
+                        tmp.Set(settings.CtoSChallenge);
+                        tmp.Set(settings.StoCChallenge);
+                        secret = tmp.Array();
+                    }
                     return GXSecure.Secure(settings, settings.Cipher, ic, settings.CtoSChallenge, secret);
                 }
                 else
@@ -182,7 +202,7 @@ namespace Gurux.DLMS.Objects
                 if (Version > 2)
                 {
                     //user_list
-                    // current_user 
+                    // current_user
                 }
             }
             return attributes.ToArray();
@@ -221,7 +241,7 @@ namespace Gurux.DLMS.Objects
         {
             data.SetUInt8((byte)DataType.Structure);
             data.SetUInt8((byte)3);
-            GXCommon.SetData(settings, data, DataType.UInt16, item.ShortName);
+            GXCommon.SetData(settings, data, DataType.Int16, item.ShortName);
 
             int cnt = (item as IGXDLMSBase).GetAttributeCount();
             data.SetUInt8((byte)DataType.Array);
@@ -390,7 +410,7 @@ namespace Gurux.DLMS.Objects
         {
             foreach (List<object> access in buff)
             {
-                ushort sn = Convert.ToUInt16(access[0]);
+                ushort sn = (ushort)((short)access[0] & 0xFFFF);
                 GXDLMSObject obj = ObjectList.FindBySN(sn);
                 if (obj != null)
                 {

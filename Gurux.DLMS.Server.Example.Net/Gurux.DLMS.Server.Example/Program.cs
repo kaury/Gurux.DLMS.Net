@@ -32,36 +32,24 @@
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
 
+using Gurux.DLMS;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using Gurux.Common;
 using System.Threading;
 
 namespace GuruxDLMSServerExample
 {
-    class Settings
-    {
-        public TraceLevel trace = TraceLevel.Info;
-        public int port = 4060;
-        public string serial;
-        public bool useLogicalNameReferencing = true;
-    }
-
     class Program
     {
         static int Main(string[] args)
         {
-            //Create Network media component and start listen events.
-            //4059 is Official DLMS port.
-            Settings settings = new Settings();
-            int ret = GetParameters(args, settings);
-            if (ret != 0)
-            {
-                return ret;
-            }
             try
             {
+                Settings settings = new Settings();
+                int ret = Settings.GetParameters(args, settings);
+                if (ret != 0)
+                {
+                    return ret;
+                }
                 if (settings.serial != null)
                 {
                     GXDLMSBase server;
@@ -102,6 +90,8 @@ namespace GuruxDLMSServerExample
                 }
                 else
                 {
+                    //Create Network media component and start listen events.
+                    //4059 is Official DLMS port.
                     ///////////////////////////////////////////////////////////////////////
                     //Create Gurux DLMS server component for Short Name and start listen events.
                     GXDLMSServerSN SNServer = new GXDLMSServerSN();
@@ -133,6 +123,14 @@ namespace GuruxDLMSServerExample
                     Console.WriteLine("Logical Name DLMS Server with IEC 62056-47 in port {0}.", settings.port + 3);
                     Console.WriteLine("Example connection settings:");
                     Console.WriteLine("Gurux.DLMS.Client.Example.Net -h localhost -p {0} -w", settings.port + 3);
+                    Console.WriteLine("----------------------------------------------------------");
+                    Console.WriteLine("Server System title: {0}", GXDLMSTranslator.ToHex(LNServer.Ciphering.SystemTitle));
+                    Console.WriteLine("Authentication key: {0}", GXDLMSTranslator.ToHex(LNServer.Ciphering.AuthenticationKey));
+                    Console.WriteLine("Block cipher key: {0}", GXDLMSTranslator.ToHex(LNServer.Ciphering.BlockCipherKey));
+                    Console.WriteLine("Client System title: {0}", GXDLMSTranslator.ToHex(LNServer.ClientSystemTitle));
+                    Console.WriteLine("Master key (KEK) title: {0}", GXDLMSTranslator.ToHex(LNServer.Kek));
+                    Console.WriteLine("----------------------------------------------------------");
+
                     Thread t = new Thread(() => DoWork(SNServer));
                     t.Start();
                     t = new Thread(() => DoWork(LNServer));
@@ -185,77 +183,6 @@ namespace GuruxDLMSServerExample
             }
         }
 
-        static int GetParameters(string[] args, Settings settings)
-        {
-            List<GXCmdParameter> parameters = GXCommon.GetParameters(args, "t:p:S:r:");
-            foreach (GXCmdParameter it in parameters)
-            {
-                switch (it.Tag)
-                {
-                    case 't':
-                        //Trace.
-                        try
-                        {
-                            settings.trace = (TraceLevel)Enum.Parse(typeof(TraceLevel), it.Value);
-                        }
-                        catch (Exception)
-                        {
-                            throw new ArgumentException("Invalid Authentication option. (Error, Warning, Info, Verbose, Off)");
-                        }
-                        break;
-                    case 'p':
-                        //Port.
-                        settings.port = int.Parse(it.Value);
-                        break;
-                    case 'S':
-                        //serial port.
-                        settings.serial = it.Value;
-                        break;
-                    case 'r':
-                        if (string.Compare(it.Value, "sn", true) == 0)
-                        {
-                            settings.useLogicalNameReferencing = false;
-                        }
-                        else if (string.Compare(it.Value, "ln", true) == 0)
-                        {
-                            settings.useLogicalNameReferencing = true;
-                        }
-                        else
-                        {
-                            throw new ArgumentException("Invalid reference option.");
-                        }
-                        break;
-                    case '?':
-                        switch (it.Tag)
-                        {
-                            case 'p':
-                                throw new ArgumentException("Missing mandatory port option.");
-                            case 't':
-                                throw new ArgumentException("Missing mandatory trace option.\n");
-                            case 'S':
-                                throw new ArgumentException("Missing mandatory Serial port option.");
-                            case 'r':
-                                throw new ArgumentException("Missing mandatory reference option.");
-                            default:
-                                ShowHelp();
-                                return 1;
-                        }
-                    default:
-                        ShowHelp();
-                        return 1;
-                }
-            }
-            return 0;
-        }
 
-        static void ShowHelp()
-        {
-            Console.WriteLine("Gurux DLMS example Server implements four DLMS/COSEM devices.");
-            Console.WriteLine(" -t [Error, Warning, Info, Verbose] Trace messages.");
-            Console.WriteLine(" -p Start port number. Default is 4060.");
-            Console.WriteLine(" -S Serial port.");
-            Console.WriteLine(" -S Serial port.");
-            Console.WriteLine(" -r [sn, sn]\t Short name or Logican Name (default) referencing is used.");
-        }
     }
 }

@@ -292,6 +292,16 @@ namespace Gurux.DLMS.Objects
                     bb.GetUInt8();
                     ic = bb.GetUInt32();
                 }
+                else if (settings.Authentication == Authentication.HighSHA256)
+                {
+                    GXByteBuffer tmp = new GXByteBuffer();
+                    tmp.Set(Secret);
+                    tmp.Set(settings.SourceSystemTitle);
+                    tmp.Set(settings.Cipher.SystemTitle);
+                    tmp.Set(settings.StoCChallenge);
+                    tmp.Set(settings.CtoSChallenge);
+                    secret = tmp.Array();
+                }
                 else
                 {
                     secret = Secret;
@@ -303,13 +313,23 @@ namespace Gurux.DLMS.Objects
                     if (settings.Authentication == Authentication.HighGMAC)
                     {
                         secret = settings.Cipher.SystemTitle;
-                        ic = settings.Cipher.InvocationCounter;
+                        ic = settings.Cipher.InvocationCounter++;
                     }
                     else
                     {
                         secret = Secret;
                     }
                     AssociationStatus = AssociationStatus.Associated;
+                    if (settings.Authentication == Authentication.HighSHA256)
+                    {
+                        GXByteBuffer tmp = new GXByteBuffer();
+                        tmp.Set(Secret);
+                        tmp.Set(settings.Cipher.SystemTitle);
+                        tmp.Set(settings.SourceSystemTitle);
+                        tmp.Set(settings.CtoSChallenge);
+                        tmp.Set(settings.StoCChallenge);
+                        secret = tmp.Array();
+                    }
                     return GXSecure.Secure(settings, settings.Cipher, ic, settings.CtoSChallenge, secret);
                 }
                 else //If the password does not match.
@@ -1182,16 +1202,8 @@ namespace Gurux.DLMS.Objects
                 UserList.Clear();
                 if (e.Value != null)
                 {
-                    List<object> arr, item;
-                    if (e.Value is List<object>)
-                    {
-                        arr = (List<object>)e.Value;
-                    }
-                    else
-                    {
-                        arr = new List<object>((object[])e.Value);
-                    }
-                    foreach (object tmp in arr)
+                    List<object> item;
+                    foreach (object tmp in (IEnumerable<object>)e.Value)
                     {
                         if (tmp is List<object>)
                         {

@@ -56,8 +56,9 @@ namespace Gurux.DLMS
         /// Generates Invoke ID and priority.
         /// </summary>
         /// <param name="settings">DLMS settings.</param>
+        /// <param name="increase">Is invoke ID increased.</param>
         /// <returns>Invoke ID and priority.</returns>
-        static byte GetInvokeIDPriority(GXDLMSSettings settings)
+        static byte GetInvokeIDPriority(GXDLMSSettings settings, bool increase)
         {
             byte value = 0;
             if (settings.Priority == Priority.High)
@@ -67,6 +68,10 @@ namespace Gurux.DLMS
             if (settings.ServiceClass == ServiceClass.Confirmed)
             {
                 value |= 0x40;
+            }
+            if (increase)
+            {
+                settings.InvokeID = (byte)((settings.InvokeID + 1) & 0xF);
             }
             value |= (byte)(settings.InvokeID & 0xF);
             return value;
@@ -133,7 +138,7 @@ namespace Gurux.DLMS
                 availableObjectTypes.Add(ObjectType.ExtendedRegister, typeof(GXDLMSExtendedRegister));
                 availableObjectTypes.Add(ObjectType.GprsSetup, typeof(GXDLMSGprsSetup));
                 availableObjectTypes.Add(ObjectType.IecHdlcSetup, typeof(GXDLMSHdlcSetup));
-                availableObjectTypes.Add(ObjectType.IecLocalPortSetup, typeof(GXDLMSIECOpticalPortSetup));
+                availableObjectTypes.Add(ObjectType.IecLocalPortSetup, typeof(GXDLMSIECLocalPortSetup));
                 availableObjectTypes.Add(ObjectType.Ip4Setup, typeof(GXDLMSIp4Setup));
                 availableObjectTypes.Add(ObjectType.ModemConfiguration, typeof(GXDLMSModemConfiguration));
                 availableObjectTypes.Add(ObjectType.PppSetup, typeof(GXDLMSPppSetup));
@@ -174,7 +179,11 @@ namespace Gurux.DLMS
             lock (availableObjectTypes)
             {
                 GetCosemObjects(availableObjectTypes);
-                return availableObjectTypes.Values.ToArray();
+                List<Type> types = new List<Type>();
+                types.AddRange(availableObjectTypes.Values);
+                //This is removed later.
+                types.Add(typeof(GXDLMSIECOpticalPortSetup));
+                return types.ToArray();
             }
         }
 
@@ -697,7 +706,7 @@ namespace Gurux.DLMS
                 if ((p.settings.ProposedConformance & Conformance.GeneralProtection) == 0
                     && (p.settings.NegotiatedConformance & Conformance.GeneralProtection) == 0)
                 {
-                    if (cipher.DedicatedKey != null && (p.settings.Connected & ConnectionState.Dlms) != 0)
+                    if (cipher.DedicatedKey != null && (!p.settings.IsServer || (p.settings.Connected & ConnectionState.Dlms) != 0))
                     {
                         cmd = (byte)GetDedMessage(p.command);
                         key = cipher.DedicatedKey;
@@ -860,7 +869,7 @@ namespace Gurux.DLMS
                         }
                         else
                         {
-                            reply.SetUInt8(GetInvokeIDPriority(p.settings));
+                            reply.SetUInt8(GetInvokeIDPriority(p.settings, p.settings.AutoIncreaseInvokeID));
                         }
                     }
                 }
@@ -1136,13 +1145,10 @@ namespace Gurux.DLMS
             GXByteBuffer reply = new GXByteBuffer();
             List<byte[]> messages = new List<byte[]>();
             byte frame = 0x0;
-            if (p.command == Command.InformationReport)
+            if (p.command == Command.InformationReport ||
+                p.command == Command.DataNotification)
             {
                 frame = 0x13;
-            }
-            else if (p.command == Command.None)
-            {
-                frame = p.settings.NextSend(true);
             }
             do
             {
@@ -1175,9 +1181,9 @@ namespace Gurux.DLMS
                     {
                         throw new ArgumentOutOfRangeException("InterfaceType");
                     }
-                    frame = 0;
                 }
                 reply.Clear();
+                frame = 0;
             } while (p.data != null && p.data.Position != p.data.Size);
             return messages.ToArray();
         }
@@ -1367,7 +1373,7 @@ namespace Gurux.DLMS
                 GXICipher cipher = p.settings.Cipher;
                 AesGcmParameter s = new AesGcmParameter(
                     GetGloMessage(p.command), cipher.Security,
-                    cipher.InvocationCounter, cipher.SystemTitle,
+                    cipher.InvocationCounter++, cipher.SystemTitle,
                     cipher.BlockCipherKey, cipher.AuthenticationKey);
                 byte[] tmp = GXCiphering.Encrypt(s, reply.Array());
                 System.Diagnostics.Debug.Assert(!(p.settings.MaxPduSize < tmp.Length));
@@ -1544,7 +1550,7 @@ namespace Gurux.DLMS
             {
                 len = frameSize;
                 // More data to left.
-                bb.SetUInt8((byte)(0xA8 | (len >> 8) & 0x7));
+                bb.SetUInt8((byte)(0xA8 | ((7 + primaryAddress.Length + secondaryAddress.Length + len) >> 8) & 0x7));
             }
             //Frame len.
             if (len == 0)
@@ -1818,7 +1824,11 @@ namespace Gurux.DLMS
                 {
                     return GetHdlcData(server, settings, reply, data, notify);
                 }
-                throw new Exception("Wrong CRC.");
+                if (data.Xml == null)
+                {
+                    throw new Exception("Invalid header checksum.");
+                }
+                data.Xml.AppendComment("Invalid header checksum.");
             }
             // Check that packet CRC match only if there is a data part.
             if (reply.Position != packetStartID + frameLen + 1)
@@ -1828,7 +1838,11 @@ namespace Gurux.DLMS
                 crcRead = reply.GetUInt16(packetStartID + frameLen - 1);
                 if (crc != crcRead)
                 {
-                    throw new Exception("Wrong CRC.");
+                    if (data.Xml == null)
+                    {
+                        throw new Exception("Invalid data checksum.");
+                    }
+                    data.Xml.AppendComment("Invalid data checksum.");
                 }
                 // Remove CRC and EOP from packet length.
                 if (isNotify)
@@ -2009,7 +2023,9 @@ namespace Gurux.DLMS
                     return false;
                 }
                 // Check that server addresses match.
-                if (settings.ServerAddress != source)
+                if (settings.ServerAddress != source &&
+                    // If All-station (Broadcast).
+                    settings.ServerAddress != 0x7F && settings.ServerAddress != 0x3FFF)
                 {
                     //Check logical and physical address separately.
                     //This is done because some meters might send four bytes
@@ -2566,14 +2582,15 @@ namespace Gurux.DLMS
             // Get type.
             ActionResponseType type = (ActionResponseType)data.Data.GetUInt8();
             // Get invoke ID and priority.
-            byte invoke = data.Data.GetUInt8();
+            data.InvokeId = data.Data.GetUInt8();
+            VerifyInvokeId(settings, data);
             if (data.Xml != null)
             {
                 data.Xml.AppendStartTag(Command.MethodResponse);
                 data.Xml.AppendStartTag(Command.MethodResponse, type);
                 //InvokeIdAndPriority
                 data.Xml.AppendLine(TranslatorTags.InvokeId, "Value",
-                                        data.Xml.IntegerToHex(invoke, 2));
+                                        data.Xml.IntegerToHex(data.InvokeId, 2));
             }
             //Action-Response-Normal
             if (type == ActionResponseType.Normal)
@@ -2610,13 +2627,14 @@ namespace Gurux.DLMS
         {
             SetResponseType type = (SetResponseType)data.Data.GetUInt8();
             //Invoke ID and priority.
-            byte invokeId = data.Data.GetUInt8();
+            data.InvokeId = data.Data.GetUInt8();
+            VerifyInvokeId(settings, data);
             if (data.Xml != null)
             {
                 data.Xml.AppendStartTag(Command.SetResponse);
                 data.Xml.AppendStartTag(Command.SetResponse, type);
                 //InvokeIdAndPriority
-                data.Xml.AppendLine(TranslatorTags.InvokeId, "Value", data.Xml.IntegerToHex(invokeId, 2));
+                data.Xml.AppendLine(TranslatorTags.InvokeId, "Value", data.Xml.IntegerToHex(data.InvokeId, 2));
             }
 
             //SetResponseNormal
@@ -2778,6 +2796,14 @@ namespace Gurux.DLMS
             reply.Value = values;
         }
 
+        private static void VerifyInvokeId(GXDLMSSettings settings, GXReplyData reply)
+        {
+            if (reply.Xml == null && settings.AutoIncreaseInvokeID && reply.InvokeId != GetInvokeIDPriority(settings, false))
+            {
+                throw new Exception(string.Format("Invalid invoke ID. Expected: {0} Actual: {1}", GetInvokeIDPriority(settings, false).ToString("X"), reply.InvokeId.ToString("X")));
+            }
+        }
+
         /// <summary>
         /// Handle get response and get data from block and/or update error status.
         /// </summary>
@@ -2797,7 +2823,7 @@ namespace Gurux.DLMS
             reply.CommandType = (byte)type;
             // Get invoke ID and priority.
             reply.InvokeId = data.GetUInt8();
-
+            VerifyInvokeId(settings, reply);
             if (reply.Xml != null)
             {
                 reply.Xml.AppendStartTag(Command.GetResponse);
@@ -3080,8 +3106,7 @@ namespace Gurux.DLMS
                 }
                 // Get data if all data is read or we want to peek data.
                 if (data.Data.Position != data.Data.Size
-                        && (data.Command == Command.ReadResponse
-                            || data.Command == Command.GetResponse)
+                        && (data.Command == Command.ReadResponse || data.Command == Command.GetResponse)
                         && (data.MoreData == RequestTypes.None
                             || data.Peek))
                 {
@@ -3227,7 +3252,7 @@ namespace Gurux.DLMS
                     AesGcmParameter p;
                     GXICipher cipher = settings.Cipher;
                     if (cipher.DedicatedKey != null
-                            && (settings.Connected & ConnectionState.Dlms) != 0)
+                            && (!settings.IsServer || (settings.Connected & ConnectionState.Dlms) != 0))
                     {
                         p = new AesGcmParameter(settings.SourceSystemTitle,
                                 cipher.DedicatedKey,
@@ -3358,11 +3383,11 @@ namespace Gurux.DLMS
                     case Command.GloGetResponse:
                     case Command.GloSetResponse:
                     case Command.GloMethodResponse:
-                    case Command.GloEventNotificationRequest:
+                    case Command.GloEventNotification:
                     case Command.DedGetResponse:
                     case Command.DedSetResponse:
                     case Command.DedMethodResponse:
-                    case Command.DedEventNotificationRequest:
+                    case Command.DedEventNotification:
                         HandledGloDedResponse(settings, data, index, client);
                         break;
                     case Command.GeneralGloCiphering:
@@ -3402,6 +3427,7 @@ namespace Gurux.DLMS
                         GetPdu(settings, data, null);
                         break;
                     default:
+                        data.Command = Command.None;
                         throw new ArgumentException("Invalid Command.");
                 }
             }
@@ -3461,6 +3487,8 @@ namespace Gurux.DLMS
                         case Command.GloGetResponse:
                         case Command.GloSetResponse:
                         case Command.GloMethodResponse:
+                        case Command.DedReadResponse:
+                        case Command.DedWriteResponse:
                         case Command.DedGetResponse:
                         case Command.DedSetResponse:
                         case Command.DedMethodResponse:
@@ -3627,7 +3655,11 @@ namespace Gurux.DLMS
             // If all frames are read.
             if ((data.MoreData & RequestTypes.Frame) == 0)
             {
-                int origPos = data.Xml.GetXmlLength();
+                int origPos = 0;
+                if (data.Xml != null)
+                {
+                    origPos = data.Xml.GetXmlLength();
+                }
                 --data.Data.Position;
                 AesGcmParameter p = new AesGcmParameter(settings.SourceSystemTitle,
                         settings.Cipher.BlockCipherKey,
@@ -3778,7 +3810,10 @@ namespace Gurux.DLMS
             {
                 if (!GetTcpData(settings, reply, data, notify))
                 {
-                    data = notify;
+                    if (notify != null)
+                    {
+                        data = notify;
+                    }
                     isNotify = true;
                 }
             }
@@ -3795,16 +3830,14 @@ namespace Gurux.DLMS
             {
                 throw new ArgumentException("Invalid Interface type.");
             }
-            bool moreData;
             // If all data is not read yet.
             if (!data.IsComplete)
             {
                 return false;
             }
             GetDataFromFrame(reply, data, settings.InterfaceType == InterfaceType.HDLC);
-            moreData = data.IsMoreData;
             // If keepalive or get next frame request.
-            if (data.Xml != null || ((frame != 0x13 || moreData) && (frame & 0x1) != 0))
+            if (data.Xml != null || ((frame != 0x13 || data.IsMoreData) && (frame & 0x1) != 0))
             {
                 if (settings.InterfaceType == InterfaceType.HDLC && (data.Error == (int)ErrorCode.Rejected || data.Data.Size != 0))
                 {
@@ -3819,11 +3852,11 @@ namespace Gurux.DLMS
                 switch (data.Command)
                 {
                     case Command.DataNotification:
-                    case Command.GloEventNotificationRequest:
+                    case Command.GloEventNotification:
                     case Command.InformationReport:
                     case Command.EventNotification:
-                    case Command.DedInformationReportRequest:
-                    case Command.DedEventNotificationRequest:
+                    case Command.DedInformationReport:
+                    case Command.DedEventNotification:
                         isNotify = true;
                         notify.Command = data.Command;
                         data.Command = Command.None;

@@ -160,7 +160,7 @@ namespace Gurux.DLMS.Objects
         /// <returns>Integer value of security level.</returns>
         private static int GetSecurityValue(Gurux.DLMS.Enums.Security security)
         {
-            int value = 0;
+            int value;
             switch (security)
             {
                 case Gurux.DLMS.Enums.Security.None:
@@ -267,7 +267,7 @@ namespace Gurux.DLMS.Objects
             return client.Method(this, 5, type, DataType.Enum);
         }
 
-#if !__MOBILE__ && !WINDOWS_UWP && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETSTANDARD2_0
+#if !__MOBILE__ && !WINDOWS_UWP && !NETCOREAPP2_0 && !NETCOREAPP2_1 && !NETSTANDARD2_0 && !NETCOREAPP3_0 && !NETCOREAPP3_1
         /// <summary>
         ///  Imports an X.509 v3 certificate of a public key.
         /// </summary>
@@ -418,6 +418,58 @@ namespace Gurux.DLMS.Objects
             }
             else if (e.Index == 2)
             {
+                try
+                {
+                    foreach (List<object> item in e.Parameters as List<object>)
+                    {
+                        GlobalKeyType type = (GlobalKeyType)Convert.ToInt32(item[0]);
+                        byte[] data = (byte[])item[1];
+                        //if settings.Cipher is null non secure server is used.
+                        //Keys are take in action after reply is generated.
+                        switch (type)
+                        {
+                            case GlobalKeyType.UnicastEncryption:
+                                GXDLMSSecureClient.Decrypt(settings.Kek, data);
+                                break;
+                            case GlobalKeyType.BroadcastEncryption:
+                                //Invalid type
+                                e.Error = ErrorCode.ReadWriteDenied;
+                                break;
+                            case GlobalKeyType.Authentication:
+                                GXDLMSSecureClient.Decrypt(settings.Kek, data);
+                                break;
+                            case GlobalKeyType.Kek:
+                                GXDLMSSecureClient.Decrypt(settings.Kek, data);
+                                break;
+                            default:
+                                //Invalid type
+                                e.Error = ErrorCode.ReadWriteDenied;
+                                break;
+                        }
+                    }
+                }
+                catch(Exception)
+                {
+                    e.Error = ErrorCode.ReadWriteDenied;
+                }
+            }
+            else
+            {
+                e.Error = ErrorCode.ReadWriteDenied;
+            }
+            //Return standard reply.
+            return null;
+        }
+
+        /// <summary>
+        /// Start to use new keys after reply is generated.
+        /// </summary>
+        /// <param name="settings">DLMS settings.</param>
+        /// <param name="e"></param>
+        internal void ApplyKeys(GXDLMSSettings settings, ValueEventArgs e)
+        {
+            try
+            {
                 foreach (List<object> item in e.Parameters as List<object>)
                 {
                     GlobalKeyType type = (GlobalKeyType)Convert.ToInt32(item[0]);
@@ -445,12 +497,10 @@ namespace Gurux.DLMS.Objects
                     }
                 }
             }
-            else
+            catch (Exception)
             {
                 e.Error = ErrorCode.ReadWriteDenied;
             }
-            //Return standard reply.
-            return null;
         }
 
         int[] IGXDLMSBase.GetAttributeIndexToRead(bool all)
