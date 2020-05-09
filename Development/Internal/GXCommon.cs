@@ -1585,6 +1585,7 @@ namespace Gurux.DLMS.Internal
             if (len > 0)
             {
                 value = buff.GetStringUtf8(buff.Position, len);
+                buff.Position += len;
             }
             else
             {
@@ -1725,7 +1726,7 @@ namespace Gurux.DLMS.Internal
                     else
                     {
                         bool isString = true;
-                        //Try to move octect string to DateTie, Date or time.
+                        //Try to change octect string to DateTime, Date or time.
                         if (tmp.Length == 12 || tmp.Length == 5 || tmp.Length == 4)
                         {
                             try
@@ -2887,6 +2888,10 @@ namespace Gurux.DLMS.Internal
             else if (type == typeof(GXBitString))
             {
                 return DataType.BitString;
+            }
+            else if (type == typeof(GXByteBuffer))
+            {
+                return DataType.OctetString;
             }
             else
             {

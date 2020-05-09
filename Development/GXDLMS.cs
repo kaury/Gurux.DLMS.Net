@@ -162,6 +162,13 @@ namespace Gurux.DLMS
                 availableObjectTypes.Add(ObjectType.CompactData, typeof(GXDLMSCompactData));
                 availableObjectTypes.Add(ObjectType.WirelessModeQchannel, typeof(GXDLMSWirelessModeQchannel));
                 availableObjectTypes.Add(ObjectType.UtilityTables, typeof(GXDLMSUtilityTables));
+                availableObjectTypes.Add(ObjectType.LlcSscsSetup, typeof(GXDLMSLlcSscsSetup));
+                availableObjectTypes.Add(ObjectType.PrimeNbOfdmPlcPhysicalLayerCounters, typeof(GXDLMSPrimeNbOfdmPlcPhysicalLayerCounters));
+                availableObjectTypes.Add(ObjectType.PrimeNbOfdmPlcMacSetup, typeof(GXDLMSPrimeNbOfdmPlcMacSetup));
+                availableObjectTypes.Add(ObjectType.PrimeNbOfdmPlcMacFunctionalParameters, typeof(GXDLMSPrimeNbOfdmPlcMacFunctionalParameters));
+                availableObjectTypes.Add(ObjectType.PrimeNbOfdmPlcMacCounters, typeof(GXDLMSPrimeNbOfdmPlcMacCounters));
+                availableObjectTypes.Add(ObjectType.PrimeNbOfdmPlcMacNetworkAdministrationData, typeof(GXDLMSPrimeNbOfdmPlcMacNetworkAdministrationData));
+                availableObjectTypes.Add(ObjectType.PrimeNbOfdmPlcApplicationsIdentification, typeof(GXDLMSPrimeNbOfdmPlcApplicationsIdentification));
                 //Italian standard uses this.
                 availableObjectTypes.Add(ObjectType.TariffPlan, typeof(GXDLMSTariffPlan));
             }
@@ -1108,7 +1115,7 @@ namespace Gurux.DLMS
                 {
                     if (p.settings.InterfaceType == Enums.InterfaceType.WRAPPER)
                     {
-                        messages.Add(GXDLMS.GetWrapperFrame(p.settings, reply));
+                        messages.Add(GXDLMS.GetWrapperFrame(p.settings, p.command, reply));
                     }
                     else if (p.settings.InterfaceType == Enums.InterfaceType.HDLC)
                     {
@@ -1162,7 +1169,7 @@ namespace Gurux.DLMS
                 {
                     if (p.settings.InterfaceType == Enums.InterfaceType.WRAPPER)
                     {
-                        messages.Add(GXDLMS.GetWrapperFrame(p.settings, reply));
+                        messages.Add(GXDLMS.GetWrapperFrame(p.settings, p.command, reply));
                     }
                     else if (p.settings.InterfaceType == Enums.InterfaceType.HDLC)
                     {
@@ -1450,9 +1457,10 @@ namespace Gurux.DLMS
         /// Split DLMS PDU to wrapper frames.
         /// </summary>
         /// <param name="settings">DLMS settings.</param>
+        /// <param name="command">DLMS command.</param>
         /// <param name="data"> Wrapped data.</param>
         /// <returns>Wrapper frames</returns>
-        internal static byte[] GetWrapperFrame(GXDLMSSettings settings, GXByteBuffer data)
+        internal static byte[] GetWrapperFrame(GXDLMSSettings settings, Command command, GXByteBuffer data)
         {
             GXByteBuffer bb = new GXByteBuffer();
             // Add version.
@@ -1460,7 +1468,14 @@ namespace Gurux.DLMS
             if (settings.IsServer)
             {
                 bb.SetUInt16((UInt16)settings.ServerAddress);
-                bb.SetUInt16((UInt16)settings.ClientAddress);
+                if (settings.PushClientAddress != 0 && (command == Command.DataNotification || command == Command.EventNotification))
+                {
+                    bb.SetUInt16((UInt16)settings.PushClientAddress);
+                }
+                else
+                {
+                    bb.SetUInt16((UInt16)settings.ClientAddress);
+                }
             }
             else
             {
@@ -1509,7 +1524,14 @@ namespace Gurux.DLMS
             byte[] primaryAddress, secondaryAddress;
             if (settings.IsServer)
             {
-                primaryAddress = GetHdlcAddressBytes(settings.ClientAddress, 0);
+                if (frame == 0x13 && settings.PushClientAddress != 0)
+                {
+                    primaryAddress = GetHdlcAddressBytes(settings.PushClientAddress, 0);
+                }
+                else
+                {
+                    primaryAddress = GetHdlcAddressBytes(settings.ClientAddress, 0);
+                }
                 secondaryAddress = GetHdlcAddressBytes(settings.ServerAddress, settings.ServerAddressSize);
                 len = secondaryAddress.Length;
             }
@@ -1697,6 +1719,10 @@ namespace Gurux.DLMS
             if (reply.Size - reply.Position < 9)
             {
                 data.IsComplete = false;
+                if (notify != null)
+                {
+                    notify.IsComplete = false;
+                }
                 return 0;
             }
             data.IsComplete = true;
@@ -1777,16 +1803,25 @@ namespace Gurux.DLMS
                     reply.Position = 1 + eopPos;
                     return GetHdlcData(server, settings, reply, data, notify);
                 }
-                else if (notify != null)
+                if (notify != null)
                 {
                     isNotify = true;
                     notify.ClientAddress = target;
                     notify.ServerAddress = source;
                 }
             }
-
             // Is there more data available.
-            if ((frame & 0x8) != 0)
+            bool moreData = (frame & 0x8) != 0;
+            // Get frame type.
+            frame = reply.GetUInt8();
+            //If server is using same client and server address for notifications.
+            if (frame == 0x13 && !isNotify && notify != null)
+            {
+                isNotify = true;
+                notify.ClientAddress = target;
+                notify.ServerAddress = source;
+            }
+            if (moreData)
             {
                 if (isNotify)
                 {
@@ -1808,8 +1843,6 @@ namespace Gurux.DLMS
                     data.MoreData = (RequestTypes)(data.MoreData & ~RequestTypes.Frame);
                 }
             }
-            // Get frame type.
-            frame = reply.GetUInt8();
             if (data.Xml == null && !settings.CheckFrame(frame))
             {
                 reply.Position = (eopPos + 1);
@@ -1865,7 +1898,6 @@ namespace Gurux.DLMS
                     data.PacketLength = reply.Position + 1;
                 }
             }
-
             if (frame != 0x13 && (frame & (byte)HdlcFrameType.Uframe) == (byte)HdlcFrameType.Uframe)
             {
                 //Get Eop if there is no data.
@@ -2066,12 +2098,17 @@ namespace Gurux.DLMS
             {
                 notify.IsComplete = false;
             }
-            while (buff.Position < buff.Size - 1)
+            while (buff.Available > 2)
             {
                 // Get version
                 value = buff.GetUInt16();
                 if (value == 1)
                 {
+                    if (buff.Available < 6)
+                    {
+                        isData = false;
+                        break;
+                    }
                     // Check TCP/IP addresses.
                     if (!CheckWrapperAddress(settings, buff, notify))
                     {
@@ -2333,7 +2370,7 @@ namespace Gurux.DLMS
         {
             int pos, cnt = reply.TotalCount;
             // If we are reading value first time or block is handed.
-            bool first = reply.TotalCount == 0 || reply.CommandType == (byte)SingleReadResponse.DataBlockResult;
+            bool first = cnt == 0 || reply.CommandType == (byte)SingleReadResponse.DataBlockResult;
             if (first)
             {
                 cnt = GXCommon.GetObjectCount(reply.Data);
@@ -2343,6 +2380,17 @@ namespace Gurux.DLMS
             List<Object> values = null;
             if (cnt != 1)
             {
+                //Parse data after all data is received when readlist is used.
+                if (reply.IsMoreData)
+                {
+                    GetDataFromBlock(reply.Data, 0);
+                    return false;
+                }
+                if (!first)
+                {
+                    reply.Data.Position = 0;
+                    first = true;
+                }
                 values = new List<object>();
                 if (reply.Value is List<object>)
                 {
@@ -2357,18 +2405,7 @@ namespace Gurux.DLMS
             bool standardXml = reply.Xml != null && reply.Xml.OutputType == TranslatorOutputType.StandardXml;
             for (pos = 0; pos != cnt; ++pos)
             {
-                if (reply.Data.Available == 0)
-                {
-                    reply.TotalCount = cnt;
-                    if (cnt != 1)
-                    {
-                        GetDataFromBlock(reply.Data, 0);
-                        reply.Value = values.ToArray();
-                        reply.ReadPosition = reply.Data.Position;
-                    }
-                    return false;
-                }
-                // Get status code. Status code is begin of each PDU.
+                // Get response type code.
                 if (first)
                 {
                     type = (SingleReadResponse)reply.Data.GetUInt8();
@@ -2406,21 +2443,6 @@ namespace Gurux.DLMS
                         {
                             reply.ReadPosition = reply.Data.Position;
                             GetValueFromData(settings, reply);
-                            if (reply.Data.Position == reply.ReadPosition)
-                            {
-                                //If multiple values remove command.
-                                if (cnt != 1 && reply.TotalCount == 0)
-                                {
-                                    ++index;
-                                }
-                                reply.TotalCount = 0;
-                                reply.Data.Position = index;
-                                GetDataFromBlock(reply.Data, 0);
-                                reply.Value = null;
-                                //Ask that data is parsed after last block is received.
-                                reply.CommandType = (byte)SingleReadResponse.DataBlockResult;
-                                return false;
-                            }
                             reply.Data.Position = reply.ReadPosition;
                             values.Add(reply.Value);
                             reply.Value = null;
@@ -3032,13 +3054,26 @@ namespace Gurux.DLMS
             //GBT Window size.
             byte windowSize = (byte)(bc & 0x3F);
             //Block number.
-            data.BlockNumber = data.Data.GetUInt16();
+            UInt16 bn = data.Data.GetUInt16();
             //Block number acknowledged.
-            data.BlockNumberAck = data.Data.GetUInt16();
-            if (data.Xml == null && data.BlockNumberAck != settings.BlockIndex - 1)
+            UInt16 bna = data.Data.GetUInt16();
+            if (data.Xml == null)
             {
-                System.Diagnostics.Debug.Write("Invalid GBT ACK.");
+                // Remove existing data when first block is received.
+                if (bn == 1)
+                {
+                    index = 0;
+                }
+                else if (bna != settings.BlockIndex - 1)
+                {
+                    // If this block is already received.
+                    data.Data.Size = index;
+                    data.Command = Command.None;
+                    return;
+                }
             }
+            data.BlockNumber = bn;
+            data.BlockNumberAck = bna;
             settings.BlockNumberAck = data.BlockNumber;
             data.Command = Command.None;
             int len = GXCommon.GetObjectCount(data.Data);
@@ -3501,6 +3536,13 @@ namespace Gurux.DLMS
                         default:
                             break;
                     }
+                    if (cmd == Command.ReadResponse && data.TotalCount > 1)
+                    {
+                        if (!HandleReadResponse(settings, data, 0))
+                        {
+                            return;
+                        }
+                    }
                 }
             }
             // Get data only blocks if SN is used. This is faster.
@@ -3864,16 +3906,14 @@ namespace Gurux.DLMS
                         data.Time = DateTime.MinValue;
                         notify.Data.Set(data.Data);
                         data.Data.Trim();
+                        notify.Value = data.Value;
+                        data.Value = null;
                         break;
                     default:
                         break;
                 }
             }
-            if (isNotify)
-            {
-                return false;
-            }
-            return true;
+            return !isNotify;
         }
 
         /// <summary>

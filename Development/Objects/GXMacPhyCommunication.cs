@@ -32,107 +32,95 @@
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
 
-using Gurux.DLMS.Objects.Enums;
 using System;
 
 namespace Gurux.DLMS.Objects
 {
-
     /// <summary>
-    /// Executed scripts.
+    /// MAC PHY communication parameters.
     /// </summary>
-    public class GXScheduleEntry
+    public class GXMacPhyCommunication
     {
         /// <summary>
-        /// Schedule entry index.
+        /// EUI is the EUI-48 of the other device.
         /// </summary>
-        public UInt16 Index
+        public byte[] Eui
         {
             get;
             set;
         }
 
         /// <summary>
-        /// Is Schedule entry enabled.
+        /// The tx power of GPDU packets sent to the device
         /// </summary>
-        public bool Enable
+        public sbyte TxPower
         {
             get;
             set;
         }
 
         /// <summary>
-        /// Executed Script.
+        /// The Tx coding of GPDU packets sent to the device;
         /// </summary>
-        public GXDLMSScriptTable Script
+        public sbyte TxCoding
         {
             get;
             set;
         }
 
         /// <summary>
-        /// Script identifier of the script to be executed.
+        /// The Rx coding of GPDU packets received from the device
         /// </summary>
-        public UInt16 ScriptSelector
+        public sbyte RxCoding
         {
             get;
             set;
         }
 
         /// <summary>
-        /// Switch time.
+        /// The Rx power level of GPDU packets received from the device.
         /// </summary>
-        public GXTime SwitchTime
+        public sbyte RxLvl
         {
             get;
             set;
         }
 
         /// <summary>
-        /// Defines a period in minutes, in which an entry shall be processed after power fail.
+        /// SNR of GPDU packets received from the device.
         /// </summary>
-        public UInt16 ValidityWindow
+        public sbyte Snr
         {
             get;
             set;
         }
 
         /// <summary>
-        /// Days of the week on which the entry is valid.
+        /// The number of times the Tx power was modified.
         /// </summary>
-        public Weekdays ExecWeekdays
+        public sbyte TxPowerModified
         {
             get;
             set;
         }
 
         /// <summary>
-        /// Perform the link to the IC "Special days table", day_id.
+        /// The number of times the Tx coding was modified.
         /// </summary>
-        ///<seealso cref="GXDLMSSpecialDaysTable"/>
-        public String ExecSpecDays
+        public sbyte TxCodingModified
         {
             get;
             set;
         }
 
         /// <summary>
-        /// Date starting period in which the entry is valid.
+        /// The number of times the Rx coding was modified.
         /// </summary>
-        public GXDate BeginDate
+        public sbyte RxCodingModified
         {
             get;
             set;
         }
 
-        /// <summary>
-        /// Date ending period in which the entry is valid.
-        /// </summary>
-        public GXDate EndDate
-        {
-            get;
-            set;
-        }
     }
-
 }

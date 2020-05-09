@@ -453,7 +453,7 @@ namespace Gurux.DLMS.Objects
                 }
                 reader.ReadEndElement("AdjacentCells");
             }
-            CaptureTime = new GXDateTime(reader.ReadElementContentAsString("CaptureTime"), System.Globalization.CultureInfo.InvariantCulture);
+            CaptureTime = reader.ReadElementContentAsDateTime("CaptureTime");
         }
 
         void IGXDLMSBase.Save(GXXmlWriter writer)
@@ -484,7 +484,7 @@ namespace Gurux.DLMS.Objects
                 }
                 writer.WriteEndElement();
             }
-            writer.WriteElementObject("CaptureTime", CaptureTime);
+            writer.WriteElementString("CaptureTime", CaptureTime);
         }
 
         void IGXDLMSBase.PostLoad(GXXmlReader reader)

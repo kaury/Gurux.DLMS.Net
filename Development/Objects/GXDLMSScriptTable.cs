@@ -54,7 +54,7 @@ namespace Gurux.DLMS.Objects
         /// Constructor.
         /// </summary>
         public GXDLMSScriptTable()
-        : this(null, 0)
+        : this("0.0.10.0.100.255", 0)
         {
         }
 
@@ -65,7 +65,6 @@ namespace Gurux.DLMS.Objects
         public GXDLMSScriptTable(string ln)
         : this(ln, 0)
         {
-            Scripts = new List<GXDLMSScript>();
         }
 
         /// <summary>

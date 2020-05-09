@@ -241,14 +241,14 @@ namespace Gurux.DLMS.Objects
                 if (reader.AttributeCount > 1)
                 {
                     uiType = (DataType)Enum.Parse(typeof(DataType), reader.GetAttribute(1));
-                    if (obj != null)
-                    {
-                        obj.SetUIDataType(index, uiType);
-                    }
                 }
                 else
                 {
                     uiType = dt;
+                }
+                if (obj != null && obj.GetUIDataType(index) == DataType.None)
+                {
+                    obj.SetUIDataType(index, uiType);
                 }
                 if (dt == DataType.Array || dt == DataType.Structure)
                 {
@@ -297,6 +297,30 @@ namespace Gurux.DLMS.Objects
                 string ret = reader.ReadElementContentAsString();
                 GetNext();
                 return new GXDateTime(ret, CultureInfo.InvariantCulture);
+            }
+            return null;
+        }
+
+        public GXDate ReadElementContentAsDate(string name)
+        {
+            GetNext();
+            if (string.Compare(name, reader.Name, true) == 0)
+            {
+                string ret = reader.ReadElementContentAsString();
+                GetNext();
+                return new GXDate(ret, CultureInfo.InvariantCulture);
+            }
+            return null;
+        }
+
+        public GXTime ReadElementContentAsTime(string name)
+        {
+            GetNext();
+            if (string.Compare(name, reader.Name, true) == 0)
+            {
+                string ret = reader.ReadElementContentAsString();
+                GetNext();
+                return new GXTime(ret, CultureInfo.InvariantCulture);
             }
             return null;
         }

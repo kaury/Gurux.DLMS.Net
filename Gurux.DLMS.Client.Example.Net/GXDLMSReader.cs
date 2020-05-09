@@ -280,7 +280,10 @@ namespace Gurux.DLMS.Reader
             };
             string data = (char)0x01 + "B0" + (char)0x03 + "\r\n";
             Media.Send(data, null);
+            p.Eop = "\n";
+            p.AllData = true;
             p.Count = 1;
+
             Media.Receive(p);
         }
         /// <summary>
@@ -368,6 +371,7 @@ namespace Gurux.DLMS.Reader
             {
                 p.WaitTime = 100;
                 Media.Receive(p);
+                DiscIEC();
                 throw new Exception("Invalid responce.");
             }
             string manufactureID = p.Reply.Substring(1, 3);
@@ -421,6 +425,8 @@ namespace Gurux.DLMS.Reader
             {
                 p.Reply = null;
                 Media.Send(arr, null);
+                //Some meters need this sleep. Do not remove.
+                Thread.Sleep(200);
                 p.WaitTime = 2000;
                 //Note! All meters do not echo this.
                 Media.Receive(p);
@@ -431,14 +437,12 @@ namespace Gurux.DLMS.Reader
                         Console.WriteLine("Received: " + p.Reply);
                     }
                 }
-                Media.Close();
                 serial.BaudRate = BaudRate;
                 serial.DataBits = 8;
                 serial.Parity = Parity.None;
                 serial.StopBits = StopBits.One;
-                Media.Open();
                 //Some meters need this sleep. Do not remove.
-                Thread.Sleep(1000);
+                Thread.Sleep(800);
             }
         }
 
@@ -448,6 +452,7 @@ namespace Gurux.DLMS.Reader
         /// </summary>
         public void InitializeConnection()
         {
+            Console.WriteLine("Standard: " + Client.Standard);
             if (Client.Ciphering.Security != Security.None)
             {
                 Console.WriteLine("Security: " + Client.Ciphering.Security);
@@ -593,24 +598,9 @@ namespace Gurux.DLMS.Reader
             if (!Client.UseLogicalNameReferencing)
             {
                 GXDLMSAssociationShortName sn = (GXDLMSAssociationShortName)Client.Objects.FindBySN(0xFA00);
-                if (sn.Version > 0)
+                if (sn != null && sn.Version > 0)
                 {
                     Read(sn, 3);
-                }
-                else
-                {
-                    //LGZ is using "0.0.127.0.0.0" to mark inactive object that might cause problems.
-                    //Skip them.
-                    int cnt = Client.Objects.Count;
-                    for (int pos = 0; pos < cnt; ++pos)
-                    {
-                        if (Client.Objects[pos].LogicalName == "0.0.127.0.0.0")
-                        {
-                            Client.Objects.RemoveAt(pos);
-                            --pos;
-                            --cnt;
-                        }
-                    }
                 }
             }
             if (outputFile != null)
@@ -642,7 +632,7 @@ namespace Gurux.DLMS.Reader
                 List<KeyValuePair<GXDLMSObject, int>> list = new List<KeyValuePair<GXDLMSObject, int>>();
                 foreach (GXDLMSObject it in objs)
                 {
-                    if (it is GXDLMSRegister)
+                    if (it is GXDLMSRegister || it is GXDLMSExtendedRegister)
                     {
                         list.Add(new KeyValuePair<GXDLMSObject, int>(it, 3));
                     }
@@ -853,6 +843,7 @@ namespace Gurux.DLMS.Reader
                     try
                     {
                         //Read last day from Profile Generic.
+
                         object[] rows = ReadRowsByRange(it as GXDLMSProfileGeneric, DateTime.Now.Date, DateTime.MaxValue);
                         //If trace is info.
                         if (Trace > TraceLevel.Warning)
@@ -1000,7 +991,7 @@ namespace Gurux.DLMS.Reader
                     while (!Client.GetData(rd, reply, notify))
                     {
                         p.Reply = null;
-                        if (notify.Data.Data != null)
+                        if (notify.IsComplete && notify.Data.Data != null)
                         {
                             //Handle notify.
                             if (!notify.IsMoreData)
@@ -1162,7 +1153,7 @@ namespace Gurux.DLMS.Reader
                 {
                     values.AddRange((IEnumerable<object>)reply.Value);
                 }
-                else
+                else if (reply.Value != null)
                 {
                     values.Add(reply.Value);
                 }

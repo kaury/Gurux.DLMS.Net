@@ -32,107 +32,63 @@
 // Full text may be retrieved at http://www.gnu.org/licenses/gpl-2.0.txt
 //---------------------------------------------------------------------------
 
-using Gurux.DLMS.Objects.Enums;
 using System;
 
-namespace Gurux.DLMS.Objects
+namespace Gurux.DLMS.Objects.Enums
 {
-
     /// <summary>
-    /// Executed scripts.
+    /// Present functional state of the node.
     /// </summary>
-    public class GXScheduleEntry
+    [Flags]
+    public enum MacCapabilities : UInt16
     {
         /// <summary>
-        /// Schedule entry index.
+        /// Switch capable.
         /// </summary>
-        public UInt16 Index
-        {
-            get;
-            set;
-        }
-
+        SwitchCapable = 1,
         /// <summary>
-        /// Is Schedule entry enabled.
+        /// Packet aggregation.
         /// </summary>
-        public bool Enable
-        {
-            get;
-            set;
-        }
-
+        PacketAggregation = 2,
         /// <summary>
-        /// Executed Script.
+        /// Contention free period.
         /// </summary>
-        public GXDLMSScriptTable Script
-        {
-            get;
-            set;
-        }
-
+        ContentionFreePeriod = 4,
         /// <summary>
-        /// Script identifier of the script to be executed.
+        /// Direct connection.
         /// </summary>
-        public UInt16 ScriptSelector
-        {
-            get;
-            set;
-        }
-
+        DirectConnection = 8,
         /// <summary>
-        /// Switch time.
+        /// Multicast.
         /// </summary>
-        public GXTime SwitchTime
-        {
-            get;
-            set;
-        }
-
+        Multicast = 0x10,
         /// <summary>
-        /// Defines a period in minutes, in which an entry shall be processed after power fail.
+        ///  PHY Robustness Management.
         /// </summary>
-        public UInt16 ValidityWindow
-        {
-            get;
-            set;
-        }
-
+        PhyRobustnessManagement = 0x20,
         /// <summary>
-        /// Days of the week on which the entry is valid.
+        /// ARQ.
         /// </summary>
-        public Weekdays ExecWeekdays
-        {
-            get;
-            set;
-        }
-
+        Arq = 0x40,
         /// <summary>
-        /// Perform the link to the IC "Special days table", day_id.
+        /// Reserved for future use.
         /// </summary>
-        ///<seealso cref="GXDLMSSpecialDaysTable"/>
-        public String ExecSpecDays
-        {
-            get;
-            set;
-        }
-
+        ReservedForFutureUse = 0x80,
         /// <summary>
-        /// Date starting period in which the entry is valid.
+        ///  Direct Connection Switching.
         /// </summary>
-        public GXDate BeginDate
-        {
-            get;
-            set;
-        }
-
+        DirectConnectionSwitching = 0x100,
         /// <summary>
-        /// Date ending period in which the entry is valid.
+        /// Multicast Switching Capability.
         /// </summary>
-        public GXDate EndDate
-        {
-            get;
-            set;
-        }
+        MulticastSwitchingCapability = 0x200,
+        /// <summary>
+        /// PHY Robustness Management Switching Capability.
+        /// </summary>
+        PhyRobustnessManagementSwitchingCapability = 0x400,
+        /// <summary>
+        /// ARQ Buffering Switching Capability.
+        /// </summary>
+        ArqBufferingSwitchingCapability = 0x800
     }
-
 }

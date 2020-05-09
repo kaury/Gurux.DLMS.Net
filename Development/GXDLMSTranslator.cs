@@ -266,6 +266,15 @@ namespace Gurux.DLMS
         }
 
         /// <summary>
+        /// Is General Protection used.
+        /// </summary>
+        public bool UseGeneralProtection
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
         /// Used standard.
         /// </summary>
         public Standard Standard
@@ -356,11 +365,12 @@ namespace Gurux.DLMS
         /// <returns>Is new frame found.</returns>
         public bool FindNextFrame(GXByteBuffer data, GXByteBuffer pdu, InterfaceType type)
         {
+            int original = data.Position;
             GXDLMSSettings settings = new GXDLMSSettings(true);
             GXReplyData reply = new GXReplyData();
             reply.Xml = new GXDLMSTranslatorStructure(OutputType, OmitXmlNameSpace, Hex, ShowStringAsHex, Comments, tags);
             int pos;
-            bool found;
+            bool found = false;
             try
             {
                 while (data.Position != data.Size)
@@ -403,6 +413,7 @@ namespace Gurux.DLMS
             }
             catch (Exception)
             {
+                data.Position = original;
                 throw new Exception("Invalid DLMS frame.");
             }
             if (pdu != null)
@@ -410,7 +421,12 @@ namespace Gurux.DLMS
                 pdu.Clear();
                 pdu.Set(reply.Data.Data, 0, reply.Data.Size);
             }
-            return data.Position != data.Size;
+            bool r = data.Position != data.Size;
+            if (!found)
+            {
+                data.Position = original;
+            }
+            return r;
         }
 
         /// <summary>
@@ -591,8 +607,24 @@ namespace Gurux.DLMS
                 c.BlockCipherKey = BlockCipherKey;
                 c.AuthenticationKey = AuthenticationKey;
                 c.InvocationCounter = InvocationCounter;
-                c.DedicatedKey = DedicatedKey;
-                settings.SourceSystemTitle = ServerSystemTitle;
+                if (DedicatedKey != null && DedicatedKey.Length != 0)
+                {
+                    c.DedicatedKey = DedicatedKey;
+                }
+                if (ServerSystemTitle != null && ServerSystemTitle.Length != 0)
+                {
+                    settings.SourceSystemTitle = ServerSystemTitle;
+                }
+                if (UseGeneralProtection)
+                {
+                    settings.ProposedConformance |= Conformance.GeneralProtection;
+                    settings.NegotiatedConformance |= Conformance.GeneralProtection;
+                }
+                else
+                {
+                    settings.ProposedConformance &= ~Conformance.GeneralProtection;
+                    settings.NegotiatedConformance &= ~Conformance.GeneralProtection;
+                }
                 settings.Cipher = c;
             }
             else
@@ -628,6 +660,11 @@ namespace Gurux.DLMS
                 sending = false;
                 xml.AppendComment("Disconnect Request frame.");
             }
+            else if (frame == (byte)Command.DisconnectMode)
+            {
+                sending = false;
+                xml.AppendComment("Disconnect mode.");
+            }
             //If S -frame.
             else if ((frame & (byte)HdlcFrameType.Sframe) == (byte)HdlcFrameType.Sframe)
             {
@@ -642,7 +679,7 @@ namespace Gurux.DLMS
                 {
                     ++SAck;
                 }
-                else
+                else if (SSendSequence != 0 && RSendSequence != 0)
                 {
                     byte expected = 0;
                     xml.AppendComment("Invalid I Frame: " + frame.ToString("X") + ". Expected: " + expected.ToString("X"));
@@ -753,13 +790,13 @@ namespace Gurux.DLMS
             }
             GXReplyData data = new GXReplyData();
             GXDLMSTranslatorStructure xml = new GXDLMSTranslatorStructure(OutputType, OmitXmlNameSpace, Hex, ShowStringAsHex, Comments, tags);
+            GXDLMSSettings settings = new GXDLMSSettings(true);
+            GetCiphering(settings, true);
             data.Xml = xml;
             try
             {
                 //If HDLC framing.
                 int offset = value.Position;
-                GXDLMSSettings settings = new GXDLMSSettings(true);
-                GetCiphering(settings, true);
                 if (value.GetUInt8(value.Position) == 0x7e)
                 {
                     settings.InterfaceType = Enums.InterfaceType.HDLC;
@@ -1502,6 +1539,10 @@ namespace Gurux.DLMS
                 case (byte)Command.DedSetRequest:
                 case (byte)Command.DedMethodRequest:
                 case (byte)Command.DedInitiateRequest:
+                    if (s.settings.Cipher == null)
+                    {
+                        throw new Exception("Security level is None.");
+                    }
                     s.settings.IsServer = false;
                     tmp = GXCommon.HexToBytes(GetValue(node, s));
                     s.settings.Cipher.Security = (Enums.Security)tmp[0];
@@ -1536,6 +1577,10 @@ namespace Gurux.DLMS
                 case (byte)Command.DedMethodResponse:
                 case (byte)Command.DedEventNotification:
                     tmp = GXCommon.HexToBytes(GetValue(node, s));
+                    if (s.settings.Cipher == null)
+                    {
+                        throw new Exception("Security level is None.");
+                    }
                     s.settings.Cipher.Security = (Enums.Security)tmp[0];
                     s.data.Set(tmp);
                     break;
@@ -2919,6 +2964,7 @@ namespace Gurux.DLMS
                 s = new GXDLMSXmlSettings(OutputType, Hex, ShowStringAsHex, tagsByName);
                 ((GXCiphering)s.settings.Cipher).TestMode = true;
                 s.settings.Standard = Standard;
+                GetCiphering(s.settings, false);
             }
             ReadAllNodes(doc, s);
             GXByteBuffer bb = new GXByteBuffer();
